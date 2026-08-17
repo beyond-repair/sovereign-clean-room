@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/beyond-repair/sovereign-clean-room/schemas/skill_package_v1.json",
+  "title": "SEEM_Skill_Package_v1.0",
+  "type": "object",
+  "required": ["manifest", "interface", "sovereignty", "vsa_bindings"],
+  "properties": {
+    "manifest": {
+      "type": "object",
+      "required": ["skill_id", "version", "signature", "author"],
+      "properties": {
+        "skill_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_\\-]+$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "signature": {
+          "type": "string",
+          "description": "Ed25519 signature over canonical package bytes"
+        },
+        "author": { "type": "string" }
+      }
+    },
+    "sovereignty": {
+      "type": "object",
+      "required": ["network_access", "file_system_access", "execution_mode"],
+      "properties": {
+        "network_access": {
+          "type": "boolean",
+          "const": false,
+          "description": "v1.0 skills must be offline; network skills require a future schema revision"
+        },
+        "file_system_access": {
+          "type": "string",
+          "enum": ["none", "read_only", "isolated_temp"]
+        },
+        "execution_mode": {
+          "type": "string",
+          "enum": ["deterministic_vsa", "sandboxed_python"]
+        }
+      }
+    },
+    "vsa_bindings": {
+      "type": "object",
+      "required": ["dimension", "binding_threshold", "codebook_atoms"],
+      "properties": {
+        "dimension": {
+          "type": "integer",
+          "const": 8192
+        },
+        "binding_threshold": {
+          "type": "number",
+          "minimum": 0.92,
+          "maximum": 1.0
+        },
+        "sparsity_k": {
+          "type": "integer",
+          "const": 256,
+          "description": "Must match constitutional sparsity_k"
+        },
+        "codebook_atoms": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Atom names to register or reference in the twin codebook"
+        }
+      }
+    },
+    "interface": {
+      "type": "object",
+      "required": ["inputs", "outputs"],
+      "properties": {
+        "inputs": { "type": "object" },
+        "outputs": { "type": "object" }
+      }
+    },
+    "banel": {
+      "type": "object",
+      "description": "Optional failure telemetry contract",
+      "properties": {
+        "on_fail_record": { "type": "boolean", "default": true },
+        "context_vector_required": { "type": "boolean", "default": false }
+      }
+    }
+  },
+  "additionalProperties": false
+}
