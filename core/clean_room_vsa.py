@@ -1,22 +1,34 @@
 #!/usr/bin/env python3
 """
 Sovereign Clean-Room VSA Core + BaNEL Integration Framework
-(v1.3 Hyperspherical Geometric Edition)
+(v1.3.1 — Sparse Codebook Pruning Edition)
 
 Complete production-grade implementation featuring:
 - Single-pass unbind resonator loop with strict top-k cardinality
 - Hyperspherical parallel-projection phase repulsion (BaNEL)
 - Gated invertibility checks
+- Sparse codebook pruning (utility + redundancy)
 - Atomic disk persistence & sandboxed execution
 """
 
 from __future__ import annotations
 import numpy as np
-from typing import Dict, List, Tuple, Optional, Callable, Any
+from typing import Dict, List, Tuple, Optional, Callable, Any, Set
 import time
 import json
 import shutil
 from pathlib import Path
+
+
+# Jump-Start v0.1 primitives — never pruned unless explicitly unpinned
+DEFAULT_PROTECTED_ATOMS: Set[str] = {
+    "SELF",
+    "ENVIRONMENT",
+    "EPISODIC",
+    "SEMANTIC",
+    "SUCCESS",
+    "FAILURE",
+}
 
 
 class BaNELController:
@@ -67,7 +79,13 @@ class BaNELController:
 
 class CleanRoomVSAEngine:
     """
-    Core FHRR (Frequency Holographic Reduced Representations) Engine (v1.3).
+    Core FHRR (Frequency Holographic Reduced Representations) Engine (v1.3.1).
+
+    Sparse codebook pruning:
+    - Tracks per-atom access_count / last_access / pinned
+    - Drops redundant near-duplicates (high pairwise similarity)
+    - Drops lowest-utility unpinned atoms when over max_codebook_size
+    - Never prunes pinned or Jump-Start protected atoms by default
     """
     def __init__(
         self,
@@ -75,12 +93,18 @@ class CleanRoomVSAEngine:
         sparsity_k: int = 256,
         iters: int = 7,
         min_invertibility: float = 0.92,
+        max_codebook_size: int = 4096,
+        redundancy_threshold: float = 0.97,
     ):
         self.dim = dim
         self.sparsity_k = min(sparsity_k, dim)
         self.iters = iters
         self.min_invertibility = min_invertibility
+        self.max_codebook_size = max_codebook_size
+        self.redundancy_threshold = redundancy_threshold
         self.codebook: Dict[str, np.ndarray] = {}
+        # name -> {access_count, last_access, pinned}
+        self.atom_meta: Dict[str, Dict[str, Any]] = {}
         self.banel = BaNELController()
 
     def random_symbol(self) -> np.ndarray:
@@ -89,7 +113,40 @@ class CleanRoomVSAEngine:
         vec = np.exp(1j * phases).astype(np.complex128)
         return vec / np.linalg.norm(vec)
 
-    def register(self, name: str, vec: Optional[np.ndarray] = None) -> np.ndarray:
+    def _ensure_meta(self, name: str, pinned: bool = False) -> None:
+        if name not in self.atom_meta:
+            self.atom_meta[name] = {
+                "access_count": 0,
+                "last_access": time.time(),
+                "pinned": pinned or (name in DEFAULT_PROTECTED_ATOMS),
+            }
+        elif pinned:
+            self.atom_meta[name]["pinned"] = True
+
+    def touch(self, name: str) -> None:
+        """Record an access on a codebook atom (utility signal)."""
+        self._ensure_meta(name)
+        self.atom_meta[name]["access_count"] += 1
+        self.atom_meta[name]["last_access"] = time.time()
+
+    def pin(self, name: str) -> None:
+        """Prevent an atom from being pruned."""
+        self._ensure_meta(name, pinned=True)
+        self.atom_meta[name]["pinned"] = True
+
+    def unpin(self, name: str) -> None:
+        """Allow pruning (unless name is in DEFAULT_PROTECTED_ATOMS)."""
+        self._ensure_meta(name)
+        if name in DEFAULT_PROTECTED_ATOMS:
+            return
+        self.atom_meta[name]["pinned"] = False
+
+    def register(
+        self,
+        name: str,
+        vec: Optional[np.ndarray] = None,
+        pinned: bool = False,
+    ) -> np.ndarray:
         """Register an atomic symbol into the permanent codebook."""
         if vec is None:
             vec = self.random_symbol()
@@ -97,6 +154,8 @@ class CleanRoomVSAEngine:
             vec = vec.astype(np.complex128)
             vec = vec / (np.linalg.norm(vec) + 1e-12)
         self.codebook[name] = vec
+        self._ensure_meta(name, pinned=pinned)
+        self.touch(name)
         return vec
 
     def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -146,6 +205,7 @@ class CleanRoomVSAEngine:
                 projections = matrix @ np.conj(x)
                 best_idx = int(np.argmax(np.abs(projections)))
                 x = matrix[best_idx].copy()
+                self.touch(keys[best_idx])
 
             norm = np.linalg.norm(x)
             if norm > 0:
@@ -174,6 +234,7 @@ class CleanRoomVSAEngine:
         name: str,
         vec: np.ndarray,
         binder: Optional[np.ndarray] = None,
+        pinned: bool = False,
     ) -> bool:
         """Register a MemSkill only if it passes the invertibility gate."""
         candidate = vec
@@ -181,7 +242,7 @@ class CleanRoomVSAEngine:
             candidate, score, accepted = self.gated_resonator_cleanup(vec, binder)
             if not accepted:
                 return False
-        self.register(name, candidate)
+        self.register(name, candidate, pinned=pinned)
         return True
 
     def consolidate(
@@ -203,8 +264,128 @@ class CleanRoomVSAEngine:
             return None
         return self.bundle(eligible)
 
+    # ------------------------------------------------------------------
+    # Sparse codebook pruning
+    # ------------------------------------------------------------------
+
+    def _utility(self, name: str) -> float:
+        """
+        Utility score for pruning decisions.
+        Higher = keep. Combines access frequency with recency decay.
+        """
+        meta = self.atom_meta.get(name)
+        if meta is None:
+            return 0.0
+        age = max(1.0, time.time() - float(meta["last_access"]))
+        # recency weight: more recent → higher utility
+        recency = 1.0 / (1.0 + age / 86400.0)  # day-scale decay
+        return float(meta["access_count"]) * (0.5 + 0.5 * recency)
+
+    def prune_redundant(
+        self,
+        threshold: Optional[float] = None,
+    ) -> List[str]:
+        """
+        Remove unpinned atoms that are near-duplicates of a kept atom.
+        Among a redundant pair, keep the higher-utility (or pinned) name.
+        Returns list of removed names.
+        """
+        thr = self.redundancy_threshold if threshold is None else threshold
+        names = list(self.codebook.keys())
+        removed: List[str] = []
+        alive = set(names)
+
+        for i, a in enumerate(names):
+            if a not in alive:
+                continue
+            for b in names[i + 1 :]:
+                if b not in alive:
+                    continue
+                sim = abs(self.similarity(self.codebook[a], self.codebook[b]))
+                if sim < thr:
+                    continue
+                # Redundant pair — drop the weaker unpinned one
+                a_pin = self.atom_meta.get(a, {}).get("pinned", False)
+                b_pin = self.atom_meta.get(b, {}).get("pinned", False)
+                if a_pin and b_pin:
+                    continue
+                if a_pin and not b_pin:
+                    drop = b
+                elif b_pin and not a_pin:
+                    drop = a
+                else:
+                    drop = b if self._utility(a) >= self._utility(b) else a
+                if drop in alive:
+                    alive.discard(drop)
+                    removed.append(drop)
+
+        for name in removed:
+            self.codebook.pop(name, None)
+            self.atom_meta.pop(name, None)
+        return removed
+
+    def prune_by_utility(self, max_size: Optional[int] = None) -> List[str]:
+        """
+        If codebook exceeds max_size, remove lowest-utility unpinned atoms
+        until size constraint is met. Pinned atoms are never removed.
+        """
+        limit = self.max_codebook_size if max_size is None else max_size
+        if len(self.codebook) <= limit:
+            return []
+
+        unpinned = [
+            n for n in self.codebook
+            if not self.atom_meta.get(n, {}).get("pinned", False)
+        ]
+        # Sort ascending utility — prune from the bottom
+        unpinned.sort(key=self._utility)
+
+        removed: List[str] = []
+        while len(self.codebook) > limit and unpinned:
+            name = unpinned.pop(0)
+            if name in self.codebook:
+                self.codebook.pop(name)
+                self.atom_meta.pop(name, None)
+                removed.append(name)
+        return removed
+
+    def prune_codebook(
+        self,
+        max_size: Optional[int] = None,
+        redundancy_threshold: Optional[float] = None,
+    ) -> Dict[str, List[str]]:
+        """
+        Full sparse pruning pass:
+        1) Redundancy cull (near-duplicate unpinned atoms)
+        2) Utility cull down to max_codebook_size
+
+        Returns {"redundant": [...], "utility": [...]}.
+        """
+        redundant = self.prune_redundant(threshold=redundancy_threshold)
+        utility = self.prune_by_utility(max_size=max_size)
+        return {"redundant": redundant, "utility": utility}
+
+    def codebook_stats(self) -> Dict[str, Any]:
+        """Summary statistics for capacity monitoring."""
+        pinned = sum(
+            1 for n in self.codebook
+            if self.atom_meta.get(n, {}).get("pinned", False)
+        )
+        return {
+            "size": len(self.codebook),
+            "pinned": pinned,
+            "unpinned": len(self.codebook) - pinned,
+            "max_codebook_size": self.max_codebook_size,
+            "redundancy_threshold": self.redundancy_threshold,
+            "sparsity_k": self.sparsity_k,
+        }
+
+    # ------------------------------------------------------------------
+    # Persistence
+    # ------------------------------------------------------------------
+
     def save(self, directory: str | Path) -> None:
-        """Atomically persist codebook, BaNEL ledger, and configuration."""
+        """Atomically persist codebook, atom meta, BaNEL ledger, and configuration."""
         target_dir = Path(directory)
         parent_dir = target_dir.parent
         parent_dir.mkdir(parents=True, exist_ok=True)
@@ -224,6 +405,18 @@ class CleanRoomVSAEngine:
                 manifest[name] = fname
             with open(tmp_dir / "codebook_manifest.json", "w", encoding="utf-8") as f:
                 json.dump(manifest, f, indent=2)
+
+            # Atom metadata (utility / pin state)
+            meta_out = {}
+            for name, m in self.atom_meta.items():
+                if name in self.codebook:
+                    meta_out[name] = {
+                        "access_count": int(m["access_count"]),
+                        "last_access": float(m["last_access"]),
+                        "pinned": bool(m["pinned"]),
+                    }
+            with open(tmp_dir / "atom_meta.json", "w", encoding="utf-8") as f:
+                json.dump(meta_out, f, indent=2)
 
             ledger = []
             for i, entry in enumerate(self.banel.failure_ledger):
@@ -247,6 +440,8 @@ class CleanRoomVSAEngine:
                 "sparsity_k": self.sparsity_k,
                 "iters": self.iters,
                 "min_invertibility": self.min_invertibility,
+                "max_codebook_size": self.max_codebook_size,
+                "redundancy_threshold": self.redundancy_threshold,
             }
             with open(tmp_dir / "engine_config.json", "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2)
@@ -261,7 +456,7 @@ class CleanRoomVSAEngine:
             raise RuntimeError(f"Atomic persistence failed: {e}") from e
 
     def load(self, directory: str | Path) -> None:
-        """Restore codebook, BaNEL ledger, and configuration from disk."""
+        """Restore codebook, atom meta, BaNEL ledger, and configuration from disk."""
         directory = Path(directory)
         if not directory.is_dir():
             raise FileNotFoundError(f"Persistence directory not found: {directory}")
@@ -272,6 +467,8 @@ class CleanRoomVSAEngine:
         self.sparsity_k = config["sparsity_k"]
         self.iters = config["iters"]
         self.min_invertibility = config["min_invertibility"]
+        self.max_codebook_size = config.get("max_codebook_size", 4096)
+        self.redundancy_threshold = config.get("redundancy_threshold", 0.97)
 
         self.codebook.clear()
         with open(directory / "codebook_manifest.json", "r", encoding="utf-8") as f:
@@ -280,6 +477,21 @@ class CleanRoomVSAEngine:
         for name, fname in manifest.items():
             vec = np.load(codebook_dir / fname)
             self.codebook[name] = vec.astype(np.complex128)
+
+        self.atom_meta.clear()
+        meta_path = directory / "atom_meta.json"
+        if meta_path.is_file():
+            with open(meta_path, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            for name, m in raw.items():
+                if name in self.codebook:
+                    self.atom_meta[name] = {
+                        "access_count": int(m.get("access_count", 0)),
+                        "last_access": float(m.get("last_access", time.time())),
+                        "pinned": bool(m.get("pinned", name in DEFAULT_PROTECTED_ATOMS)),
+                    }
+        for name in self.codebook:
+            self._ensure_meta(name)
 
         self.banel.failure_ledger.clear()
         with open(directory / "banel_ledger.json", "r", encoding="utf-8") as f:
@@ -361,25 +573,30 @@ class CleanRoomGate:
 
 
 if __name__ == "__main__":
-    print("[*] Initializing Sovereign Clean-Room VSA Engine (v1.3)...")
-    vsa = CleanRoomVSAEngine(dim=8192, sparsity_k=256, iters=7, min_invertibility=0.92)
+    print("[*] Initializing Sovereign Clean-Room VSA Engine (v1.3.1 Sparse Pruning)...")
+    vsa = CleanRoomVSAEngine(
+        dim=8192,
+        sparsity_k=256,
+        iters=7,
+        min_invertibility=0.92,
+        max_codebook_size=16,
+        redundancy_threshold=0.97,
+    )
     gate = CleanRoomGate(vsa)
 
-    vsa.register("WareConstant", vsa.random_symbol())
-    vsa.register("ProcaField", vsa.random_symbol())
-    vsa.register("FreeEnergyFunctional", vsa.random_symbol())
+    # Jump-start primitives (pinned by default)
+    for atom in sorted(DEFAULT_PROTECTED_ATOMS):
+        vsa.register(atom, pinned=True)
 
-    def mock_numerical_solver():
-        return np.array([4.1e-8, 1.9e-9], dtype=np.float64)
+    # Synthetic clutter + a near-duplicate
+    base = vsa.random_symbol()
+    vsa.register("temp_a", base, pinned=False)
+    vsa.register("temp_b", base * np.exp(1j * 0.01), pinned=False)  # near-duplicate
+    for i in range(20):
+        vsa.register(f"clutter_{i}", pinned=False)
 
-    outcome = gate.execute_sandboxed_computation("ProcaResidualCheck", mock_numerical_solver)
-    print(f"[*] Execution Outcome: {outcome}")
-
-    state_path = "./twin_state_v13"
-    print(f"[*] Persisting twin state atomically to '{state_path}'...")
-    vsa.save(state_path)
-
-    print("[*] Reloading engine from disk into fresh instance...")
-    vsa_restored = CleanRoomVSAEngine()
-    vsa_restored.load(state_path)
-    print(f"[+] Restored codebook symbols: {list(vsa_restored.codebook.keys())}")
+    print(f"[*] Before prune: {vsa.codebook_stats()}")
+    report = vsa.prune_codebook()
+    print(f"[*] Pruned redundant={report['redundant']} utility={report['utility']}")
+    print(f"[*] After prune: {vsa.codebook_stats()}")
+    print(f"[+] Protected still present: {sorted(DEFAULT_PROTECTED_ATOMS & set(vsa.codebook))}")
