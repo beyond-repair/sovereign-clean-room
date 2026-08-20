@@ -1,7 +1,7 @@
 # SEEM — Sovereign Clean-Room Final Form
 
 **Canonical repository for SEEM (Sovereign Evolving Emergent Mind)**  
-**Core version:** 1.3 Hyperspherical Geometric Edition  
+**Core version:** 1.3.1 (Hyperspherical Geometric + Sparse Codebook Pruning)  
 **Status:** FINAL FORM — all prior SEEM lines consolidate here
 
 This is the single active home for the SEEM cognitive substrate.
@@ -10,10 +10,12 @@ This is the single active home for the SEEM cognitive substrate.
 
 | Layer | Content |
 |-------|---------|
-| **Core** | Pure-NumPy FHRR engine, single-pass resonator, hyperspherical BaNEL, invertibility gate (0.92), atomic persistence, Clean-Room sandbox |
+| **Core** | Pure-NumPy FHRR engine, single-pass resonator, hyperspherical BaNEL, invertibility gate (0.92), sparse codebook pruning, atomic persistence, Clean-Room sandbox |
 | **Constitution** | Locked invariants (`manifests/CONSTITUTION_v1.3.md`) |
 | **Isolation theory** | Block-system isolation theorem (`docs/BLOCK_SYSTEM.md`) |
-| **Legacy map** | Pointers to superseded SEEM repositories (`docs/LEGACY.md`) |
+| **Legacy map** | Superseded SEEM repos (`docs/LEGACY.md`) |
+| **Account groups** | Full beyond-repair taxonomy (`docs/REPO_GROUPS.md`) |
+| **Skills / schema** | `skills/`, `schemas/skill_package_v1.json`, Jump-Start v0.1 |
 
 ## Design invariants
 
@@ -28,16 +30,18 @@ This is the single active home for the SEEM cognitive substrate.
 ```bash
 git clone https://github.com/beyond-repair/sovereign-clean-room.git
 cd sovereign-clean-room
-pip install numpy
+pip install -r requirements.txt
 python core/clean_room_vsa.py
+python tests/test_canonical_v13.py
+python tests/test_codebook_pruning.py
 ```
 
 ## Constitutional status
 
 ```
 SYSTEM CONSTITUTIONAL MANIFEST: SOVEREIGN CLEAN-ROOM MEMORY LOOP ACTIVE
-Version: 1.3 Hyperspherical Geometric Edition
-Status: RATIFIED & LOCKED
+Version: 1.3.1 Sparse Codebook Pruning Edition
+Status: RATIFIED & LOCKED (v1.3 invariants + pruning extension)
 ```
 
 Full text: [`manifests/CONSTITUTION_v1.3.md`](manifests/CONSTITUTION_v1.3.md)
@@ -46,31 +50,33 @@ Full text: [`manifests/CONSTITUTION_v1.3.md`](manifests/CONSTITUTION_v1.3.md)
 
 ```
 sovereign-clean-room/
-├── README.md
-├── core/
-│   └── clean_room_vsa.py      # v1.3 constitutional engine
-├── manifests/
-│   └── CONSTITUTION_v1.3.md
-├── docs/
-│   ├── LEGACY.md              # superseded SEEM repos
-│   └── BLOCK_SYSTEM.md        # isolation theorem
-└── skills/                    # gated skill packages (future)
+├── core/clean_room_vsa.py
+├── manifests/CONSTITUTION_v1.3.md
+├── schemas/skill_package_v1.json
+├── tests/
+├── skills/
+└── docs/
+    ├── LEGACY.md
+    ├── BLOCK_SYSTEM.md
+    ├── JUMP_START_v0.1.md
+    ├── ROADMAP_POST_AUDIT.md
+    └── REPO_GROUPS.md          # full account group map (2026-08-20)
 ```
 
 ## Scope boundary
 
-- **In scope:** cognitive substrate, Clean-Room isolation, MemSkill/BaNEL algebra, persistence  
-- **Out of scope (separate or future gated skills):** Ware residual-force / free-energy physics, heavy numerical solvers, cloud model weights  
+- **In scope:** cognitive substrate, Clean-Room isolation, MemSkill/BaNEL algebra, persistence, codebook pruning  
+- **Out of scope (separate groups):** Ware / Coherence Drive physics, CFT theory, Digital Double product, trading bots  
 
-## Superseded repositories
+See [`docs/REPO_GROUPS.md`](docs/REPO_GROUPS.md) for the full beyond-repair taxonomy.
 
-All prior SEEM lines are **legacy**. See [`docs/LEGACY.md`](docs/LEGACY.md).
+## Superseded SEEM repositories
 
 | Legacy repo | Disposition |
 |-------------|-------------|
-| SEEM-2.0-Self-Evolving-Emergent-Mind | Superseded — blueprint & early daemon |
-| SEEM-Cognitive-Microservice | Superseded — microservice line |
-| SEEM-Cognitive_Microservice | Superseded — duplicate line |
-| seem-block-system | Absorbed — theorem in `docs/BLOCK_SYSTEM.md` |
+| SEEM-2.0-Self-Evolving-Emergent-Mind | Superseded |
+| SEEM-Cognitive-Microservice | Superseded |
+| SEEM-Cognitive_Microservice | Superseded (duplicate) |
+| seem-block-system | Absorbed → `docs/BLOCK_SYSTEM.md` |
 
-**This repository is the final form.**
+**This repository is the final form for SEEM.**
