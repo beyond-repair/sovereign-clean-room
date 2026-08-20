@@ -8,6 +8,7 @@ Complete production-grade implementation featuring:
 - Hyperspherical parallel-projection phase repulsion (BaNEL)
 - Gated invertibility checks
 - Sparse codebook pruning (utility + redundancy)
+- Jump-Start v0.1 primitive registry
 - Atomic disk persistence & sandboxed execution
 """
 
@@ -29,6 +30,16 @@ DEFAULT_PROTECTED_ATOMS: Set[str] = {
     "SUCCESS",
     "FAILURE",
 }
+
+# Ordered registration for deterministic manifests
+JUMP_START_V01_ATOMS: Tuple[str, ...] = (
+    "SELF",
+    "ENVIRONMENT",
+    "EPISODIC",
+    "SEMANTIC",
+    "SUCCESS",
+    "FAILURE",
+)
 
 
 class BaNELController:
@@ -103,13 +114,16 @@ class CleanRoomVSAEngine:
         self.max_codebook_size = max_codebook_size
         self.redundancy_threshold = redundancy_threshold
         self.codebook: Dict[str, np.ndarray] = {}
-        # name -> {access_count, last_access, pinned}
         self.atom_meta: Dict[str, Dict[str, Any]] = {}
         self.banel = BaNELController()
+        self._jump_start_seed: Optional[int] = None
 
-    def random_symbol(self) -> np.ndarray:
+    def random_symbol(self, rng: Optional[np.random.Generator] = None) -> np.ndarray:
         """Normalized random complex hypervector on the unit hypersphere."""
-        phases = np.random.uniform(0.0, 2.0 * np.pi, self.dim)
+        if rng is None:
+            phases = np.random.uniform(0.0, 2.0 * np.pi, self.dim)
+        else:
+            phases = rng.uniform(0.0, 2.0 * np.pi, self.dim)
         vec = np.exp(1j * phases).astype(np.complex128)
         return vec / np.linalg.norm(vec)
 
@@ -146,10 +160,11 @@ class CleanRoomVSAEngine:
         name: str,
         vec: Optional[np.ndarray] = None,
         pinned: bool = False,
+        rng: Optional[np.random.Generator] = None,
     ) -> np.ndarray:
         """Register an atomic symbol into the permanent codebook."""
         if vec is None:
-            vec = self.random_symbol()
+            vec = self.random_symbol(rng=rng)
         else:
             vec = vec.astype(np.complex128)
             vec = vec / (np.linalg.norm(vec) + 1e-12)
@@ -265,6 +280,51 @@ class CleanRoomVSAEngine:
         return self.bundle(eligible)
 
     # ------------------------------------------------------------------
+    # Jump-Start v0.1
+    # ------------------------------------------------------------------
+
+    def jump_start_v01(self, seed: Optional[int] = 0x5345454D) -> Dict[str, Any]:
+        """
+        Register and pin the six mandatory Jump-Start v0.1 primitives.
+
+        Uses FHRR complex unit-hypersphere vectors (constitutional algebra).
+        Optional seed makes the bootstrap reproducible (default: ASCII 'SEEM').
+        """
+        self._jump_start_seed = seed
+        rng = np.random.default_rng(seed) if seed is not None else None
+        for name in JUMP_START_V01_ATOMS:
+            self.register(name, vec=None, pinned=True, rng=rng)
+            self.pin(name)
+        return self.jump_start_manifest()
+
+    def verify_jump_start_integrity(self) -> bool:
+        """True iff all six Jump-Start atoms exist, are pinned, and unit-norm."""
+        for name in JUMP_START_V01_ATOMS:
+            if name not in self.codebook:
+                return False
+            meta = self.atom_meta.get(name, {})
+            if not meta.get("pinned", False):
+                return False
+            nrm = float(np.linalg.norm(self.codebook[name]))
+            if abs(nrm - 1.0) > 1e-6:
+                return False
+        return True
+
+    def jump_start_manifest(self) -> Dict[str, Any]:
+        """Emit a sealed bootstrap manifest (no raw vectors)."""
+        return {
+            "version": "jump_start_v0.1",
+            "atoms": list(JUMP_START_V01_ATOMS),
+            "all_pinned": self.verify_jump_start_integrity(),
+            "dim": self.dim,
+            "sparsity_k": self.sparsity_k,
+            "iters": self.iters,
+            "min_invertibility": self.min_invertibility,
+            "seed": self._jump_start_seed,
+            "codebook_stats": self.codebook_stats(),
+        }
+
+    # ------------------------------------------------------------------
     # Sparse codebook pruning
     # ------------------------------------------------------------------
 
@@ -277,8 +337,7 @@ class CleanRoomVSAEngine:
         if meta is None:
             return 0.0
         age = max(1.0, time.time() - float(meta["last_access"]))
-        # recency weight: more recent → higher utility
-        recency = 1.0 / (1.0 + age / 86400.0)  # day-scale decay
+        recency = 1.0 / (1.0 + age / 86400.0)
         return float(meta["access_count"]) * (0.5 + 0.5 * recency)
 
     def prune_redundant(
@@ -304,7 +363,6 @@ class CleanRoomVSAEngine:
                 sim = abs(self.similarity(self.codebook[a], self.codebook[b]))
                 if sim < thr:
                     continue
-                # Redundant pair — drop the weaker unpinned one
                 a_pin = self.atom_meta.get(a, {}).get("pinned", False)
                 b_pin = self.atom_meta.get(b, {}).get("pinned", False)
                 if a_pin and b_pin:
@@ -337,7 +395,6 @@ class CleanRoomVSAEngine:
             n for n in self.codebook
             if not self.atom_meta.get(n, {}).get("pinned", False)
         ]
-        # Sort ascending utility — prune from the bottom
         unpinned.sort(key=self._utility)
 
         removed: List[str] = []
@@ -354,13 +411,7 @@ class CleanRoomVSAEngine:
         max_size: Optional[int] = None,
         redundancy_threshold: Optional[float] = None,
     ) -> Dict[str, List[str]]:
-        """
-        Full sparse pruning pass:
-        1) Redundancy cull (near-duplicate unpinned atoms)
-        2) Utility cull down to max_codebook_size
-
-        Returns {"redundant": [...], "utility": [...]}.
-        """
+        """Full sparse pruning pass: redundancy then utility."""
         redundant = self.prune_redundant(threshold=redundancy_threshold)
         utility = self.prune_by_utility(max_size=max_size)
         return {"redundant": redundant, "utility": utility}
@@ -406,7 +457,6 @@ class CleanRoomVSAEngine:
             with open(tmp_dir / "codebook_manifest.json", "w", encoding="utf-8") as f:
                 json.dump(manifest, f, indent=2)
 
-            # Atom metadata (utility / pin state)
             meta_out = {}
             for name, m in self.atom_meta.items():
                 if name in self.codebook:
@@ -442,6 +492,7 @@ class CleanRoomVSAEngine:
                 "min_invertibility": self.min_invertibility,
                 "max_codebook_size": self.max_codebook_size,
                 "redundancy_threshold": self.redundancy_threshold,
+                "jump_start_seed": self._jump_start_seed,
             }
             with open(tmp_dir / "engine_config.json", "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2)
@@ -469,6 +520,7 @@ class CleanRoomVSAEngine:
         self.min_invertibility = config["min_invertibility"]
         self.max_codebook_size = config.get("max_codebook_size", 4096)
         self.redundancy_threshold = config.get("redundancy_threshold", 0.97)
+        self._jump_start_seed = config.get("jump_start_seed")
 
         self.codebook.clear()
         with open(directory / "codebook_manifest.json", "r", encoding="utf-8") as f:
@@ -573,30 +625,14 @@ class CleanRoomGate:
 
 
 if __name__ == "__main__":
-    print("[*] Initializing Sovereign Clean-Room VSA Engine (v1.3.1 Sparse Pruning)...")
+    print("[*] Initializing Sovereign Clean-Room VSA Engine (v1.3.1)...")
     vsa = CleanRoomVSAEngine(
         dim=8192,
         sparsity_k=256,
         iters=7,
         min_invertibility=0.92,
-        max_codebook_size=16,
-        redundancy_threshold=0.97,
     )
-    gate = CleanRoomGate(vsa)
-
-    # Jump-start primitives (pinned by default)
-    for atom in sorted(DEFAULT_PROTECTED_ATOMS):
-        vsa.register(atom, pinned=True)
-
-    # Synthetic clutter + a near-duplicate
-    base = vsa.random_symbol()
-    vsa.register("temp_a", base, pinned=False)
-    vsa.register("temp_b", base * np.exp(1j * 0.01), pinned=False)  # near-duplicate
-    for i in range(20):
-        vsa.register(f"clutter_{i}", pinned=False)
-
-    print(f"[*] Before prune: {vsa.codebook_stats()}")
-    report = vsa.prune_codebook()
-    print(f"[*] Pruned redundant={report['redundant']} utility={report['utility']}")
-    print(f"[*] After prune: {vsa.codebook_stats()}")
-    print(f"[+] Protected still present: {sorted(DEFAULT_PROTECTED_ATOMS & set(vsa.codebook))}")
+    manifest = vsa.jump_start_v01()
+    print(f"[+] Jump-Start: {manifest}")
+    assert vsa.verify_jump_start_integrity()
+    print("[+] Integrity OK")
