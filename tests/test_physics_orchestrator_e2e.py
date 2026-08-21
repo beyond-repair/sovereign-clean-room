@@ -14,7 +14,6 @@ not experimental confirmation of Ware/CFT/IQG.
 
 from __future__ import annotations
 
-import json
 import sys
 import tempfile
 from pathlib import Path
@@ -75,7 +74,6 @@ def test_native_bridge_through_orchestrator() -> None:
     eng = CleanRoomVSAEngine(dim=8192)
     eng.jump_start_v01()
     bridge = WarePhysicsBridge()
-    # Direct baseline for hash comparison
     direct = bridge.evaluate(galaxy_id="SAMPLE_A", n=3.0, log=False)
     assert direct.get("result_hash")
     assert direct["claim_class"] == CLAIM_CLASS
@@ -97,11 +95,9 @@ def test_native_bridge_through_orchestrator() -> None:
         initial_state={"galaxy_id": "SAMPLE_A", "n": 3.0},
     )
     assert result.status == "PASS", result.error
-    # Last step output should carry same result_hash as pure evaluate
     step_out = None
     if result.steps:
         step_out = result.steps[-1].get("output") or result.steps[-1]
-    # Fallback: telemetry
     tel = result.state.get("telemetry") or {}
     rh = tel.get("physics_result_hash") or (
         step_out.get("result_hash") if isinstance(step_out, dict) else None
@@ -126,26 +122,17 @@ def test_ledger_attests_hashes_and_claim_block() -> None:
         assert out.get("result_hash") and out.get("input_hash")
 
         audit_payload = {
-            k: v
-            for k, v in out.items()
-            if k not in ("fhrr_vector",)
+            k: v for k, v in out.items() if k not in ("fhrr_vector",)
         }
         entry = ledger.append("physics_ware_sparc", audit_payload)
         chain = ledger.verify_chain()
         assert chain.get("ok") is True
-
-        # Reload tip content if ledger stores readable events
         assert entry.seq >= 0
         assert entry.entry_hash
 
-        # Tamper simulation: changing status invalidates recomputed hash
         tampered = dict(audit_payload)
         original_rh = tampered["result_hash"]
         tampered["status"] = "PASS" if tampered.get("status") != "PASS" else "FAIL"
-        # result_hash still claims old value — integrity check would fail if re-verified
-        from clean_room_physics import PhysicsVerification
-
-        # Reconstruct minimal verification-like payload
         assert original_rh != hash_payload(
             {
                 "status": tampered["status"],
@@ -158,7 +145,6 @@ def test_ledger_attests_hashes_and_claim_block() -> None:
             }
         )
 
-        # Claim block recorded
         for k, v in CLAIM_FLAGS.items():
             assert audit_payload[k] == v
 
@@ -170,7 +156,6 @@ def test_cli_exit_contract() -> None:
         ws = str(Path(tmp) / "ws")
         assert cli_main(["--workspace", ws, "init"]) == 0
 
-        # SAMPLE_A n=3 → may be PASS/FAIL/INCONCLUSIVE; n=5 must FAIL (2)
         rc5 = cli_main(
             ["--workspace", ws, "physics", "eval", "--galaxy", "SAMPLE_A", "--n", "5"]
         )
@@ -181,19 +166,22 @@ def test_cli_exit_contract() -> None:
         )
         assert rc3 in (0, 2, 3)
 
-        # Missing local dataset must not be PASS
-        rc_miss = cli_main(
-            [
-                "--workspace",
-                ws,
-                "physics",
-                "eval",
-                "--csv",
-                str(Path(tmp) / "no_such.csv"),
-            ]
-        )
-        # CLI dies with SystemExit 1 on missing file, or returns non-zero
-        assert rc_miss != 0
+        # Missing local dataset must not be PASS (CLI may SystemExit or return ≠0)
+        try:
+            rc_miss = cli_main(
+                [
+                    "--workspace",
+                    ws,
+                    "physics",
+                    "eval",
+                    "--csv",
+                    str(Path(tmp) / "no_such.csv"),
+                ]
+            )
+            assert rc_miss != 0
+        except SystemExit as e:
+            assert e.code is None or e.code != 0
+
         print("[OK] CLI exit contract 0/2/3; missing data not PASS")
 
 
@@ -201,7 +189,6 @@ def test_offline_remote_source_rejected_before_network() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         ws = str(Path(tmp) / "ws")
         cli_main(["--workspace", ws, "init"])
-        # Remote URL must fail closed without becoming PASS
         try:
             rc = cli_main(
                 [
@@ -215,7 +202,7 @@ def test_offline_remote_source_rejected_before_network() -> None:
             )
             assert rc != 0
         except SystemExit as e:
-            assert e.code != 0
+            assert e.code is None or e.code != 0
 
         out = WarePhysicsBridge().evaluate(csv_path="https://evil.example/data.csv")
         assert out["status"] == "FAIL"
@@ -235,7 +222,6 @@ def test_fhrr_boundary_and_claim_unchanged() -> None:
     assert d["fhrr_dim"] == FHRR_DIM
     assert d["claim_class"] == CLAIM_CLASS
     assert d["thrust_validated"] is False
-    # "Validation failure" must not mutate physics — claim flags stay false
     assert d["experimental_validation"] is False
     print("[OK] FHRR dim/norm + claim metadata stable")
 
@@ -260,7 +246,6 @@ def test_result_hash_survives_ledger_roundtrip() -> None:
         }
         entry = ledger.append("physics_attestation", payload)
         assert ledger.verify_chain()["ok"] is True
-        # Re-evaluate identical inputs → same hashes
         out2 = WarePhysicsBridge().evaluate(galaxy_id="SAMPLE_B", n=3.0)
         assert out2["result_hash"] == rh
         assert out2["input_hash"] == ih
