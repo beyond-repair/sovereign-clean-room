@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Sovereign Clean-Room VSA Core + BaNEL Integration Framework
-(v1.3.1 — Sparse Codebook Pruning Edition)
+(v1.3.2 — Ed25519 Skill Signature Gate)
 
 Complete production-grade implementation featuring:
 - Single-pass unbind resonator loop with strict top-k cardinality
@@ -9,12 +9,13 @@ Complete production-grade implementation featuring:
 - Gated invertibility checks
 - Sparse codebook pruning (utility + redundancy)
 - Jump-Start v0.1 primitive registry
+- Ed25519 skill package verification at the Clean-Room boundary
 - Atomic disk persistence & sandboxed execution
 """
 
 from __future__ import annotations
 import numpy as np
-from typing import Dict, List, Tuple, Optional, Callable, Any, Set
+from typing import Dict, List, Tuple, Optional, Callable, Any, Set, Iterable, Union
 import time
 import json
 import shutil
@@ -31,7 +32,6 @@ DEFAULT_PROTECTED_ATOMS: Set[str] = {
     "FAILURE",
 }
 
-# Ordered registration for deterministic manifests
 JUMP_START_V01_ATOMS: Tuple[str, ...] = (
     "SELF",
     "ENVIRONMENT",
@@ -43,11 +43,8 @@ JUMP_START_V01_ATOMS: Tuple[str, ...] = (
 
 
 class BaNELController:
-    """
-    Bayesian Negative Evidence Learning (BaNEL) Engine.
-    Tracks execution failures, imprints failure directions in complex phase space,
-    and scales mutation magnitude inversely with route fitness using hyperspherical geometry.
-    """
+    """Bayesian Negative Evidence Learning (BaNEL) Engine."""
+
     def __init__(self, imprint_strength: float = 0.20):
         self.imprint_strength = imprint_strength
         self.failure_ledger: List[Dict[str, Any]] = []
@@ -58,7 +55,6 @@ class BaNELController:
         error_msg: str,
         context_vector: Optional[np.ndarray] = None,
     ) -> float:
-        """Logs a failure and calculates a negative evidence score."""
         evidence_score = 0.85
         self.failure_ledger.append({
             "task": task_name,
@@ -75,10 +71,6 @@ class BaNELController:
         failure_vec: np.ndarray,
         fitness: float,
     ) -> np.ndarray:
-        """
-        Hyperspherical phase-space repulsion:
-        remove the parallel component of the failure vector and add controlled phase noise.
-        """
         dynamic_strength = self.imprint_strength + 0.15 * max(0.0, 1.0 - fitness)
         proj_coeff = np.vdot(failure_vec, parent_vec)
         parallel = proj_coeff * parent_vec
@@ -89,15 +81,8 @@ class BaNELController:
 
 
 class CleanRoomVSAEngine:
-    """
-    Core FHRR (Frequency Holographic Reduced Representations) Engine (v1.3.1).
+    """Core FHRR Engine (v1.3.2)."""
 
-    Sparse codebook pruning:
-    - Tracks per-atom access_count / last_access / pinned
-    - Drops redundant near-duplicates (high pairwise similarity)
-    - Drops lowest-utility unpinned atoms when over max_codebook_size
-    - Never prunes pinned or Jump-Start protected atoms by default
-    """
     def __init__(
         self,
         dim: int = 8192,
@@ -119,7 +104,6 @@ class CleanRoomVSAEngine:
         self._jump_start_seed: Optional[int] = None
 
     def random_symbol(self, rng: Optional[np.random.Generator] = None) -> np.ndarray:
-        """Normalized random complex hypervector on the unit hypersphere."""
         if rng is None:
             phases = np.random.uniform(0.0, 2.0 * np.pi, self.dim)
         else:
@@ -138,18 +122,15 @@ class CleanRoomVSAEngine:
             self.atom_meta[name]["pinned"] = True
 
     def touch(self, name: str) -> None:
-        """Record an access on a codebook atom (utility signal)."""
         self._ensure_meta(name)
         self.atom_meta[name]["access_count"] += 1
         self.atom_meta[name]["last_access"] = time.time()
 
     def pin(self, name: str) -> None:
-        """Prevent an atom from being pruned."""
         self._ensure_meta(name, pinned=True)
         self.atom_meta[name]["pinned"] = True
 
     def unpin(self, name: str) -> None:
-        """Allow pruning (unless name is in DEFAULT_PROTECTED_ATOMS)."""
         self._ensure_meta(name)
         if name in DEFAULT_PROTECTED_ATOMS:
             return
@@ -162,7 +143,6 @@ class CleanRoomVSAEngine:
         pinned: bool = False,
         rng: Optional[np.random.Generator] = None,
     ) -> np.ndarray:
-        """Register an atomic symbol into the permanent codebook."""
         if vec is None:
             vec = self.random_symbol(rng=rng)
         else:
@@ -174,15 +154,12 @@ class CleanRoomVSAEngine:
         return vec
 
     def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
-        """FHRR binding via element-wise Hadamard multiplication."""
         return a * b
 
     def unbind(self, composite: np.ndarray, binder: np.ndarray) -> np.ndarray:
-        """Correlative unbinding via multiplication with the complex conjugate."""
         return composite * np.conj(binder)
 
     def bundle(self, vectors: List[np.ndarray]) -> np.ndarray:
-        """Holographic superposition with normalization."""
         if not vectors:
             raise ValueError("Cannot bundle an empty list of vectors.")
         summed = np.sum(vectors, axis=0)
@@ -190,7 +167,6 @@ class CleanRoomVSAEngine:
         return summed / (norm + 1e-12)
 
     def similarity(self, a: np.ndarray, b: np.ndarray) -> float:
-        """Real part of normalized cosine similarity."""
         return float(
             np.real(np.vdot(a, b))
             / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-12)
@@ -199,12 +175,7 @@ class CleanRoomVSAEngine:
     def resonator_cleanup(
         self, noisy_vec: np.ndarray, binder: np.ndarray
     ) -> Tuple[np.ndarray, float]:
-        """
-        Single correlative unbind outside loop →
-        strict top-k cardinality → codebook denoising → normalize.
-        """
         x = noisy_vec * np.conj(binder)
-
         keys = list(self.codebook.keys())
         matrix = np.stack([self.codebook[k] for k in keys], axis=0) if keys else None
 
@@ -231,13 +202,11 @@ class CleanRoomVSAEngine:
         return x, invert_score
 
     def check_invertibility(self, invert_score: float) -> bool:
-        """Hard constitutional gate."""
         return invert_score >= self.min_invertibility
 
     def gated_resonator_cleanup(
         self, noisy_vec: np.ndarray, binder: np.ndarray
     ) -> Tuple[Optional[np.ndarray], float, bool]:
-        """Resonator cleanup followed by invertibility gate."""
         cleaned, invert_score = self.resonator_cleanup(noisy_vec, binder)
         accepted = self.check_invertibility(invert_score)
         if not accepted:
@@ -251,7 +220,6 @@ class CleanRoomVSAEngine:
         binder: Optional[np.ndarray] = None,
         pinned: bool = False,
     ) -> bool:
-        """Register a MemSkill only if it passes the invertibility gate."""
         candidate = vec
         if binder is not None:
             candidate, score, accepted = self.gated_resonator_cleanup(vec, binder)
@@ -267,29 +235,17 @@ class CleanRoomVSAEngine:
         fitness_scores: Optional[List[float]] = None,
         min_fitness: float = 0.0,
     ) -> Optional[np.ndarray]:
-        """Holographic consolidation of high-fitness episodic vectors."""
         if fitness_scores is not None:
             eligible = [
                 v for v, f in zip(episodic_vectors, fitness_scores) if f >= min_fitness
             ]
         else:
             eligible = list(episodic_vectors)
-
         if len(eligible) < min_count:
             return None
         return self.bundle(eligible)
 
-    # ------------------------------------------------------------------
-    # Jump-Start v0.1
-    # ------------------------------------------------------------------
-
     def jump_start_v01(self, seed: Optional[int] = 0x5345454D) -> Dict[str, Any]:
-        """
-        Register and pin the six mandatory Jump-Start v0.1 primitives.
-
-        Uses FHRR complex unit-hypersphere vectors (constitutional algebra).
-        Optional seed makes the bootstrap reproducible (default: ASCII 'SEEM').
-        """
         self._jump_start_seed = seed
         rng = np.random.default_rng(seed) if seed is not None else None
         for name in JUMP_START_V01_ATOMS:
@@ -298,7 +254,6 @@ class CleanRoomVSAEngine:
         return self.jump_start_manifest()
 
     def verify_jump_start_integrity(self) -> bool:
-        """True iff all six Jump-Start atoms exist, are pinned, and unit-norm."""
         for name in JUMP_START_V01_ATOMS:
             if name not in self.codebook:
                 return False
@@ -311,7 +266,6 @@ class CleanRoomVSAEngine:
         return True
 
     def jump_start_manifest(self) -> Dict[str, Any]:
-        """Emit a sealed bootstrap manifest (no raw vectors)."""
         return {
             "version": "jump_start_v0.1",
             "atoms": list(JUMP_START_V01_ATOMS),
@@ -324,15 +278,7 @@ class CleanRoomVSAEngine:
             "codebook_stats": self.codebook_stats(),
         }
 
-    # ------------------------------------------------------------------
-    # Sparse codebook pruning
-    # ------------------------------------------------------------------
-
     def _utility(self, name: str) -> float:
-        """
-        Utility score for pruning decisions.
-        Higher = keep. Combines access frequency with recency decay.
-        """
         meta = self.atom_meta.get(name)
         if meta is None:
             return 0.0
@@ -340,20 +286,11 @@ class CleanRoomVSAEngine:
         recency = 1.0 / (1.0 + age / 86400.0)
         return float(meta["access_count"]) * (0.5 + 0.5 * recency)
 
-    def prune_redundant(
-        self,
-        threshold: Optional[float] = None,
-    ) -> List[str]:
-        """
-        Remove unpinned atoms that are near-duplicates of a kept atom.
-        Among a redundant pair, keep the higher-utility (or pinned) name.
-        Returns list of removed names.
-        """
+    def prune_redundant(self, threshold: Optional[float] = None) -> List[str]:
         thr = self.redundancy_threshold if threshold is None else threshold
         names = list(self.codebook.keys())
         removed: List[str] = []
         alive = set(names)
-
         for i, a in enumerate(names):
             if a not in alive:
                 continue
@@ -376,27 +313,20 @@ class CleanRoomVSAEngine:
                 if drop in alive:
                     alive.discard(drop)
                     removed.append(drop)
-
         for name in removed:
             self.codebook.pop(name, None)
             self.atom_meta.pop(name, None)
         return removed
 
     def prune_by_utility(self, max_size: Optional[int] = None) -> List[str]:
-        """
-        If codebook exceeds max_size, remove lowest-utility unpinned atoms
-        until size constraint is met. Pinned atoms are never removed.
-        """
         limit = self.max_codebook_size if max_size is None else max_size
         if len(self.codebook) <= limit:
             return []
-
         unpinned = [
             n for n in self.codebook
             if not self.atom_meta.get(n, {}).get("pinned", False)
         ]
         unpinned.sort(key=self._utility)
-
         removed: List[str] = []
         while len(self.codebook) > limit and unpinned:
             name = unpinned.pop(0)
@@ -411,13 +341,11 @@ class CleanRoomVSAEngine:
         max_size: Optional[int] = None,
         redundancy_threshold: Optional[float] = None,
     ) -> Dict[str, List[str]]:
-        """Full sparse pruning pass: redundancy then utility."""
         redundant = self.prune_redundant(threshold=redundancy_threshold)
         utility = self.prune_by_utility(max_size=max_size)
         return {"redundant": redundant, "utility": utility}
 
     def codebook_stats(self) -> Dict[str, Any]:
-        """Summary statistics for capacity monitoring."""
         pinned = sum(
             1 for n in self.codebook
             if self.atom_meta.get(n, {}).get("pinned", False)
@@ -431,21 +359,14 @@ class CleanRoomVSAEngine:
             "sparsity_k": self.sparsity_k,
         }
 
-    # ------------------------------------------------------------------
-    # Persistence
-    # ------------------------------------------------------------------
-
     def save(self, directory: str | Path) -> None:
-        """Atomically persist codebook, atom meta, BaNEL ledger, and configuration."""
         target_dir = Path(directory)
         parent_dir = target_dir.parent
         parent_dir.mkdir(parents=True, exist_ok=True)
-
         tmp_dir = parent_dir / f".tmp_{target_dir.name}_{int(time.time() * 1000)}"
         if tmp_dir.exists():
             shutil.rmtree(tmp_dir)
         tmp_dir.mkdir(parents=True, exist_ok=True)
-
         try:
             codebook_dir = tmp_dir / "codebook"
             codebook_dir.mkdir(exist_ok=True)
@@ -456,7 +377,6 @@ class CleanRoomVSAEngine:
                 manifest[name] = fname
             with open(tmp_dir / "codebook_manifest.json", "w", encoding="utf-8") as f:
                 json.dump(manifest, f, indent=2)
-
             meta_out = {}
             for name, m in self.atom_meta.items():
                 if name in self.codebook:
@@ -467,7 +387,6 @@ class CleanRoomVSAEngine:
                     }
             with open(tmp_dir / "atom_meta.json", "w", encoding="utf-8") as f:
                 json.dump(meta_out, f, indent=2)
-
             ledger = []
             for i, entry in enumerate(self.banel.failure_ledger):
                 record = {
@@ -484,7 +403,6 @@ class CleanRoomVSAEngine:
                 ledger.append(record)
             with open(tmp_dir / "banel_ledger.json", "w", encoding="utf-8") as f:
                 json.dump(ledger, f, indent=2)
-
             config = {
                 "dim": self.dim,
                 "sparsity_k": self.sparsity_k,
@@ -496,22 +414,18 @@ class CleanRoomVSAEngine:
             }
             with open(tmp_dir / "engine_config.json", "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2)
-
             if target_dir.exists():
                 shutil.rmtree(target_dir)
             tmp_dir.rename(target_dir)
-
         except Exception as e:
             if tmp_dir.exists():
                 shutil.rmtree(tmp_dir)
             raise RuntimeError(f"Atomic persistence failed: {e}") from e
 
     def load(self, directory: str | Path) -> None:
-        """Restore codebook, atom meta, BaNEL ledger, and configuration from disk."""
         directory = Path(directory)
         if not directory.is_dir():
             raise FileNotFoundError(f"Persistence directory not found: {directory}")
-
         with open(directory / "engine_config.json", "r", encoding="utf-8") as f:
             config = json.load(f)
         self.dim = config["dim"]
@@ -521,7 +435,6 @@ class CleanRoomVSAEngine:
         self.max_codebook_size = config.get("max_codebook_size", 4096)
         self.redundancy_threshold = config.get("redundancy_threshold", 0.97)
         self._jump_start_seed = config.get("jump_start_seed")
-
         self.codebook.clear()
         with open(directory / "codebook_manifest.json", "r", encoding="utf-8") as f:
             manifest = json.load(f)
@@ -529,7 +442,6 @@ class CleanRoomVSAEngine:
         for name, fname in manifest.items():
             vec = np.load(codebook_dir / fname)
             self.codebook[name] = vec.astype(np.complex128)
-
         self.atom_meta.clear()
         meta_path = directory / "atom_meta.json"
         if meta_path.is_file():
@@ -544,7 +456,6 @@ class CleanRoomVSAEngine:
                     }
         for name in self.codebook:
             self._ensure_meta(name)
-
         self.banel.failure_ledger.clear()
         with open(directory / "banel_ledger.json", "r", encoding="utf-8") as f:
             ledger = json.load(f)
@@ -564,11 +475,49 @@ class CleanRoomVSAEngine:
 class CleanRoomGate:
     """
     Sovereign Clean-Room Boundary Isolator.
-    Sandboxes untrusted operations, validates return types, blocks side effects,
-    and feeds failure telemetry into the BaNEL ledger.
+
+    - Sandboxes untrusted callables
+    - Verifies Ed25519 skill package signatures before skill execution
+    - Enforces network_access=false on packages
+    - Records failures in BaNEL
     """
-    def __init__(self, vsa_engine: CleanRoomVSAEngine):
+
+    def __init__(
+        self,
+        vsa_engine: CleanRoomVSAEngine,
+        trusted_verify_keys: Optional[Iterable[str]] = None,
+        require_skill_signature: bool = True,
+    ):
         self.vsa = vsa_engine
+        self.trusted_verify_keys: List[str] = [k.strip() for k in (trusted_verify_keys or []) if k]
+        self.require_skill_signature = require_skill_signature
+
+    def add_trusted_verify_key(self, verify_key_hex: str) -> None:
+        k = verify_key_hex.strip()
+        if k and k not in self.trusted_verify_keys:
+            self.trusted_verify_keys.append(k)
+
+    def load_trusted_verify_key_file(self, path: Union[str, Path]) -> None:
+        text = Path(path).read_text(encoding="utf-8").strip().split()[0]
+        self.add_trusted_verify_key(text)
+
+    def verify_skill_package(self, package: Dict[str, Any]) -> None:
+        """Raise PermissionError if package is not safe to execute."""
+        sov = package.get("sovereignty") or {}
+        if sov.get("network_access") is not False:
+            raise PermissionError("skill rejected: network_access must be false")
+
+        if not self.require_skill_signature:
+            return
+
+        # Local import keeps core loadable if PyNaCl missing until skill path used
+        from skill_crypto import verify_package
+
+        if not self.trusted_verify_keys:
+            raise PermissionError(
+                "skill rejected: no trusted verify keys configured on CleanRoomGate"
+            )
+        verify_package(package, self.trusted_verify_keys)
 
     def execute_sandboxed_computation(
         self,
@@ -623,15 +572,48 @@ class CleanRoomGate:
                 "banel_evidence": evidence_score,
             }
 
+    def execute_skill_package(
+        self,
+        package: Dict[str, Any],
+        payload_func: Callable,
+        *args,
+        context_vector: Optional[np.ndarray] = None,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """
+        Verify package signature + sovereignty, then sandbox-execute payload.
+        Unsigned / tampered packages never reach payload_func.
+        """
+        skill_id = package.get("manifest", {}).get("skill_id", "unknown_skill")
+        try:
+            self.verify_skill_package(package)
+        except Exception as e:
+            msg = str(e)
+            print(f"[-] [Clean-Room] Skill '{skill_id}' rejected before execution: {msg}")
+            evidence = self.vsa.banel.record_failure(
+                f"skill_verify:{skill_id}", msg, context_vector
+            )
+            return {
+                "status": "FAIL",
+                "task": f"skill_verify:{skill_id}",
+                "output": None,
+                "error": msg,
+                "elapsed": 0.0,
+                "banel_evidence": evidence,
+            }
+
+        return self.execute_sandboxed_computation(
+            f"skill:{skill_id}",
+            payload_func,
+            *args,
+            context_vector=context_vector,
+            **kwargs,
+        )
+
 
 if __name__ == "__main__":
-    print("[*] Initializing Sovereign Clean-Room VSA Engine (v1.3.1)...")
-    vsa = CleanRoomVSAEngine(
-        dim=8192,
-        sparsity_k=256,
-        iters=7,
-        min_invertibility=0.92,
-    )
+    print("[*] Initializing Sovereign Clean-Room VSA Engine (v1.3.2)...")
+    vsa = CleanRoomVSAEngine(dim=8192, sparsity_k=256, iters=7, min_invertibility=0.92)
     manifest = vsa.jump_start_v01()
     print(f"[+] Jump-Start: {manifest}")
     assert vsa.verify_jump_start_integrity()
