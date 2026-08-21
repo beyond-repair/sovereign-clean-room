@@ -4,7 +4,8 @@ Unified Sovereign Control CLI & Command Center
 
 Offline-first workspace management for:
   VSA core, skill signing, orchestrator, ledger, checkpoints,
-  daemon, episodic memory, SHACL, local model bridge, loopback dashboard.
+  daemon, episodic memory, SHACL, local model bridge, loopback dashboard,
+  JKillnHide integrity watchdog, Ware/SPARC physics bridge.
 
 No external network. network_access: false.
 """
@@ -39,6 +40,21 @@ def _read_key_hex(path: Path) -> str:
     return path.read_text(encoding="utf-8").strip().split()[0]
 
 
+def _load_engine(ws: Path):
+    from clean_room_vsa import CleanRoomVSAEngine
+
+    eng = CleanRoomVSAEngine(dim=8192)
+    twin = ws / "twin_state"
+    if twin.is_dir():
+        try:
+            eng.load(twin)
+            return eng
+        except Exception:
+            pass
+    eng.jump_start_v01()
+    return eng
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     from clean_room_vsa import CleanRoomVSAEngine
 
@@ -48,6 +64,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     (ws / "memory").mkdir(exist_ok=True)
     (ws / "skills").mkdir(exist_ok=True)
     (ws / "keys").mkdir(exist_ok=True)
+    (ws / "defense").mkdir(exist_ok=True)
     twin = ws / "twin_state"
 
     engine = CleanRoomVSAEngine(dim=8192)
@@ -128,6 +145,12 @@ def cmd_status(args: argparse.Namespace) -> int:
     else:
         report["memory"] = {"episodes": 0}
 
+    baseline = ws / "defense" / "baseline.json"
+    report["jkillnhide"] = {
+        "baseline_present": baseline.is_file(),
+        "path": str(baseline) if baseline.is_file() else None,
+    }
+
     print(json.dumps(report, indent=2))
     if args.strict:
         eng_ok = report.get("engine", {}).get("jump_start_ok", False)
@@ -178,19 +201,10 @@ def cmd_ledger_verify(args: argparse.Namespace) -> int:
 
 
 def cmd_memory_recall(args: argparse.Namespace) -> int:
-    from clean_room_vsa import CleanRoomVSAEngine
     from clean_room_memory import EpisodicMemoryStore
 
     ws = _workspace(args.workspace)
-    eng = CleanRoomVSAEngine(dim=8192)
-    twin = ws / "twin_state"
-    if twin.is_dir():
-        try:
-            eng.load(twin)
-        except Exception:
-            eng.jump_start_v01()
-    else:
-        eng.jump_start_v01()
+    eng = _load_engine(ws)
 
     store = EpisodicMemoryStore(ws / "memory", engine=eng, tau=float(args.tau))
     if args.remember:
@@ -239,7 +253,7 @@ def cmd_shacl_check(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    from clean_room_vsa import CleanRoomVSAEngine, CleanRoomGate
+    from clean_room_vsa import CleanRoomGate
     from clean_room_model import LocalModelBridge, DeterministicLocalBackend, skill_handler_factory
     from clean_room_orchestrator import CleanRoomOrchestrator, PipelineStep
 
@@ -249,15 +263,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         _die(f"package not found: {pkg_path}")
     package = json.loads(pkg_path.read_text(encoding="utf-8"))
 
-    eng = CleanRoomVSAEngine(dim=8192)
-    twin = ws / "twin_state"
-    if twin.is_dir():
-        try:
-            eng.load(twin)
-        except Exception:
-            eng.jump_start_v01()
-    else:
-        eng.jump_start_v01()
+    eng = _load_engine(ws)
 
     keys: List[str] = []
     keys_dir = ws / "keys"
@@ -298,6 +304,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             indent=2,
         )
     )
+    twin = ws / "twin_state"
     if twin.parent.exists():
         eng.save(twin)
     return 0 if result.status == "PASS" else 2
@@ -385,6 +392,99 @@ def cmd_dashboard_start(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_jkillnhide(args: argparse.Namespace) -> int:
+    """Workspace integrity: baseline / check / enforce."""
+    from clean_room_jkillnhide import JKillnHideWatchdog
+    from clean_room_ledger import CleanRoomLedger
+
+    ws = _workspace(args.workspace)
+    eng = _load_engine(ws)
+    ledger = CleanRoomLedger(ws / "audit")
+    wd = JKillnHideWatchdog(
+        workspace=ws,
+        engine=eng,
+        ledger=ledger,
+        fail_closed_on_drift=not args.allow_drift,
+    )
+
+    action = args.jkill_cmd
+    if action == "baseline":
+        hashes = wd.write_baseline()
+        print(
+            json.dumps(
+                {
+                    "action": "baseline",
+                    "file_count": len(hashes),
+                    "path": str(wd.baseline_path),
+                    "network_access": False,
+                },
+                indent=2,
+            )
+        )
+        twin = ws / "twin_state"
+        eng.save(twin)
+        _ok(f"integrity baseline written ({len(hashes)} files)")
+        return 0
+
+    if action == "check":
+        report = wd.scan(log=not args.no_log)
+        print(json.dumps(report.to_dict(), indent=2))
+        twin = ws / "twin_state"
+        eng.save(twin)
+        if report.status == "CLEAN":
+            return 0
+        if report.status == "MISSING_BASELINE":
+            return 3
+        return 2  # DRIFT
+
+    if action == "enforce":
+        decision = wd.enforce()
+        print(json.dumps(decision, indent=2))
+        twin = ws / "twin_state"
+        eng.save(twin)
+        return 0 if decision.get("allow_execution") else 2
+
+    _die(f"unknown jkillnhide action: {action}")
+    return 1
+
+
+def cmd_physics(args: argparse.Namespace) -> int:
+    """Ware/SPARC phenomenological curve evaluation (offline)."""
+    from clean_room_physics import WarePhysicsBridge
+    from clean_room_ledger import CleanRoomLedger
+
+    ws = _workspace(args.workspace)
+    eng = _load_engine(ws)
+    ledger = CleanRoomLedger(ws / "audit")
+    bridge = WarePhysicsBridge(workspace=ws, engine=eng, ledger=ledger)
+
+    action = args.physics_cmd
+    if action != "eval":
+        _die(f"unknown physics action: {action}")
+
+    csv_path = Path(args.csv) if args.csv else None
+    if csv_path is not None and not csv_path.is_file():
+        _die(f"CSV not found: {csv_path}")
+
+    result = bridge.evaluate(
+        galaxy_id=args.galaxy or "SAMPLE_A",
+        n=float(args.n),
+        kappa=float(args.kappa),
+        csv_path=csv_path,
+        log=not args.no_log,
+    )
+    print(json.dumps(result, indent=2))
+    twin = ws / "twin_state"
+    eng.save(twin)
+
+    status = result.get("status")
+    if status == "PASS":
+        return 0
+    if status == "INCONCLUSIVE":
+        return 3
+    return 2  # FAIL
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="clean_room_cli",
@@ -450,11 +550,57 @@ def build_parser() -> argparse.ArgumentParser:
     st.set_defaults(func=cmd_daemon_start)
 
     s = sub.add_parser("dashboard", help="local loopback web dashboard")
-    dsub = s.add_subparsers(dest="dashboard_cmd", required=True)
-    ds = dsub.add_parser("start", help="serve UI on 127.0.0.1 only")
+    dash_sub = s.add_subparsers(dest="dashboard_cmd", required=True)
+    ds = dash_sub.add_parser("start", help="serve UI on 127.0.0.1 only")
     ds.add_argument("--host", default="127.0.0.1", help="must be 127.0.0.1 or localhost")
     ds.add_argument("--port", type=int, default=8765)
     ds.set_defaults(func=cmd_dashboard_start)
+
+    # --- JKillnHide ---
+    s = sub.add_parser(
+        "jkillnhide",
+        help="workspace integrity watchdog (offline)",
+    )
+    jk = s.add_subparsers(dest="jkill_cmd", required=True)
+
+    jb = jk.add_parser("baseline", help="write integrity baseline snapshot")
+    jb.add_argument(
+        "--allow-drift",
+        action="store_true",
+        help="(unused on baseline; reserved for policy consistency)",
+    )
+    jb.set_defaults(func=cmd_jkillnhide)
+
+    jc = jk.add_parser("check", help="scan vs baseline (exit 2 on DRIFT)")
+    jc.add_argument("--allow-drift", action="store_true")
+    jc.add_argument("--no-log", action="store_true", help="skip ledger append")
+    jc.set_defaults(func=cmd_jkillnhide)
+
+    je = jk.add_parser("enforce", help="policy decision CONTINUE/FREEZE")
+    je.add_argument(
+        "--allow-drift",
+        action="store_true",
+        help="do not fail-closed on DRIFT",
+    )
+    je.set_defaults(func=cmd_jkillnhide)
+
+    # --- Physics / Ware-SPARC ---
+    s = sub.add_parser(
+        "physics",
+        help="Ware/SPARC phenomenological bridge (offline)",
+    )
+    ph = s.add_subparsers(dest="physics_cmd", required=True)
+    pe = ph.add_parser("eval", help="evaluate sample or local CSV curve")
+    pe.add_argument(
+        "--galaxy",
+        default="SAMPLE_A",
+        help="bundled sample id (SAMPLE_A|SAMPLE_B)",
+    )
+    pe.add_argument("--csv", default=None, help="local SPARC-style CSV path")
+    pe.add_argument("--n", type=float, default=3.0, help="recursion depth n")
+    pe.add_argument("--kappa", type=float, default=25.0, help="phenomenological kappa")
+    pe.add_argument("--no-log", action="store_true", help="skip ledger append")
+    pe.set_defaults(func=cmd_physics)
 
     return p
 
