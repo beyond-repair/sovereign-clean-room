@@ -1,0 +1,48 @@
+{
+  "manifest": {
+    "skill_id": "episodic_bind",
+    "version": "1.0.0",
+    "signature": "UNSIGNED_DEV_PLACEHOLDER",
+    "author": "beyond-repair"
+  },
+  "sovereignty": {
+    "network_access": false,
+    "file_system_access": "none",
+    "execution_mode": "sandboxed_python"
+  },
+  "vsa_bindings": {
+    "dimension": 8192,
+    "binding_threshold": 0.92,
+    "sparsity_k": 256,
+    "codebook_atoms": [
+      "SELF",
+      "ENVIRONMENT",
+      "EPISODIC",
+      "SEMANTIC",
+      "SUCCESS",
+      "FAILURE"
+    ]
+  },
+  "interface": {
+    "inputs": {
+      "note": {
+        "type": "string",
+        "description": "Local episodic note text (never leaves the host)"
+      },
+      "require_jump_start": {
+        "type": "boolean",
+        "default": true
+      }
+    },
+    "outputs": {
+      "status": { "type": "string", "enum": ["PASS", "FAIL"] },
+      "invertibility": { "type": "number" },
+      "bound_atom": { "type": "string" },
+      "evidence": { "type": "string", "enum": ["SUCCESS", "FAILURE"] }
+    }
+  },
+  "banel": {
+    "on_fail_record": true,
+    "context_vector_required": false
+  }
+}
