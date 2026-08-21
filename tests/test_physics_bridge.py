@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for pure Ware/SPARC physics kernel (no ledger mutation)."""
+"""Tests for pure Ware/SPARC physics kernel — v1 contract gate."""
 
 from __future__ import annotations
 
@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "core"))
 
 from clean_room_physics import (  # noqa: E402
+    CLAIM_CLASS,
+    CLAIM_FLAGS,
     FHRR_DIM,
     ware_weight,
     ware_result,
@@ -24,9 +26,11 @@ from clean_room_physics import (  # noqa: E402
     verify_physics,
     verify_result_integrity,
     encode_fhrr,
+    hash_payload,
     WarePhysicsBridge,
     physics_skill_handler,
     ProcaField,
+    PhysicsVerification,
 )
 from clean_room_vsa import CleanRoomVSAEngine, CleanRoomGate  # noqa: E402
 from clean_room_orchestrator import CleanRoomOrchestrator, PipelineStep  # noqa: E402
@@ -98,9 +102,50 @@ def test_tamper_invalidates_hash() -> None:
     print("[OK] result_hash detects tampering")
 
 
+def test_immutable_claim_flags() -> None:
+    ver = verify_physics(sample_galaxy("SAMPLE_A"), n=3.0)
+    assert ver.claim_class == CLAIM_CLASS == "phenomenological_hypothesis"
+    assert ver.experimental_validation is False
+    assert ver.energy_extraction_validated is False
+    assert ver.thrust_validated is False
+    assert ver.network_access is False
+
+    # Constructor overrides must not stick
+    forced = PhysicsVerification(
+        status="PASS",
+        metrics={},
+        assumptions=[],
+        warnings=[],
+        claim_class="experimentally_confirmed",  # type: ignore[arg-type]
+        experimental_validation=True,
+        energy_extraction_validated=True,
+        thrust_validated=True,
+        network_access=True,
+    )
+    assert forced.claim_class == "phenomenological_hypothesis"
+    assert forced.experimental_validation is False
+    assert forced.energy_extraction_validated is False
+    assert forced.thrust_validated is False
+    assert forced.network_access is False
+
+    # Claim flags participate in result_hash
+    d = ver.to_dict()
+    assert d["claim_class"] == "phenomenological_hypothesis"
+    assert d["experimental_validation"] is False
+    payload = ver.payload_for_hash()
+    assert payload["claim_class"] == CLAIM_CLASS
+    assert "experimental_validation" in payload
+
+    out = WarePhysicsBridge().evaluate(galaxy_id="SAMPLE_A", n=3.0)
+    for k, v in CLAIM_FLAGS.items():
+        assert out[k] == v
+    print("[OK] immutable claim_class flags in object + hash + evaluate dict")
+
+
 def test_remote_path_rejected() -> None:
     out = WarePhysicsBridge().evaluate(csv_path="https://example.com/sparc.csv")
     assert out["status"] == "FAIL" and out["network_access"] is False
+    assert out["claim_class"] == CLAIM_CLASS
     try:
         load_sparc_csv("https://cdn.example/data.csv")
         raise AssertionError("expected PermissionError")
@@ -115,6 +160,7 @@ def test_malformed_curve_inconclusive() -> None:
         path.write_text("not,a,curve\n1,2,3\n", encoding="utf-8")
         out = WarePhysicsBridge().evaluate(csv_path=path)
         assert out["status"] == "INCONCLUSIVE"
+        assert out["experimental_validation"] is False
     print("[OK] malformed CSV → INCONCLUSIVE")
 
 
@@ -151,6 +197,7 @@ def test_local_csv_and_proca_residual() -> None:
 def test_ghost_free_fail_high_n() -> None:
     out = WarePhysicsBridge().evaluate(galaxy_id="SAMPLE_A", n=5.0)
     assert out["status"] == "FAIL"
+    assert out["thrust_validated"] is False
     print("[OK] n=5 fails ghost-free")
 
 
@@ -181,8 +228,11 @@ def test_orchestrator_signed_skill() -> None:
         initial_state={"galaxy_id": "SAMPLE_A", "n": 3.0},
     )
     assert result.status == "PASS", result.error
-    assert result.state["telemetry"]["physics_status"] in ("PASS", "FAIL", "INCONCLUSIVE")
-    print("[OK] signed orchestrator physics skill")
+    tel = result.state["telemetry"]
+    assert tel["physics_status"] in ("PASS", "FAIL", "INCONCLUSIVE")
+    assert tel.get("claim_class") == CLAIM_CLASS
+    assert tel.get("experimental_validation") is False
+    print("[OK] signed orchestrator physics skill + claim telemetry")
 
 
 if __name__ == "__main__":
@@ -190,10 +240,11 @@ if __name__ == "__main__":
     test_identical_input_identical_result()
     test_fhrr_dim_and_determinism()
     test_tamper_invalidates_hash()
+    test_immutable_claim_flags()
     test_remote_path_rejected()
     test_malformed_curve_inconclusive()
     test_local_csv_and_proca_residual()
     test_ghost_free_fail_high_n()
     test_disclaimer_present()
     test_orchestrator_signed_skill()
-    print("--- PHYSICS BRIDGE TESTS PASSED ---")
+    print("--- PHYSICS BRIDGE v1 CONTRACT TESTS PASSED ---")
