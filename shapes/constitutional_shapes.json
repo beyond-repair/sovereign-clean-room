@@ -1,0 +1,58 @@
+{
+  "shapes": [
+    {
+      "id": "SkillGateResultShape",
+      "targetClass": "seem:SkillGateResult",
+      "closed": false,
+      "properties": [
+        {
+          "path": "seem:status",
+          "minCount": 1,
+          "maxCount": 1,
+          "in": ["PASS", "FAIL"]
+        },
+        {
+          "path": "seem:network_access",
+          "minCount": 0,
+          "maxCount": 1,
+          "in": [false]
+        }
+      ]
+    },
+    {
+      "id": "PipelineStateShape",
+      "targetClass": "seem:PipelineState",
+      "closed": false,
+      "properties": [
+        {
+          "path": "seem:has_inputs",
+          "datatype": "boolean",
+          "minCount": 0
+        },
+        {
+          "path": "seem:status",
+          "in": ["PASS", "FAIL", "RUNNING"],
+          "minCount": 0
+        }
+      ]
+    },
+    {
+      "id": "SkillPackageSovereigntyShape",
+      "targetClass": "seem:SkillPackage",
+      "closed": false,
+      "properties": [
+        {
+          "path": "seem:network_access",
+          "minCount": 1,
+          "maxCount": 1,
+          "hasValue": false
+        },
+        {
+          "path": "seem:dimension",
+          "minCount": 1,
+          "hasValue": 8192
+        }
+      ]
+    }
+  ]
+}
