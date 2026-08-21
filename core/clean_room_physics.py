@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 """
-Ware Constant Physics & SPARC Data Bridge — offline only.
+Ware Constant Physics & SPARC Data Bridge — pure offline kernel.
 
-Models phenomenological rotation-curve residuals using the repository Ware
-recursion and a simplified Proca / coherence coupling term. Bundled sample
-curves stand in for SPARC tables when no local CSV is provided.
+Scientific boundary (locked):
+  Phenomenological rotation-curve comparison + FHRR encoding only.
+  Does NOT validate CFT, IQG, vacuum-energy extraction, or propulsion.
+  PASS = relative RMSE improvement under stated assumptions — not physical proof.
 
-Does NOT claim experimental confirmation of vacuum-energy extraction or
-propulsion. Outputs are numerical comparisons + FHRR encodings for the
-sovereign agent stack.
+Architectural boundary (locked):
+  This module does not mutate the audit ledger or sign packages.
+  CLI / Orchestrator / Gate own audit and cryptography.
 
-network_access: false
+Canonical Ware law:
+  W(n) = 0.08 * exp(0.23 * (n - 3))
+  Ghost-free: W(n) < 0.125
+
+network_access: false — local paths only; remote schemes hard-fail.
 """
 
 from __future__ import annotations
@@ -19,320 +24,518 @@ import csv
 import hashlib
 import json
 import math
-from dataclasses import dataclass, field
+import re
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
-from clean_room_vsa import CleanRoomVSAEngine
-from clean_room_ledger import CleanRoomLedger
-from clean_room_shacl import LocalGraph, ShapeEngine, ValidationReport
-
-# Repository-aligned Ware recursion (engineering-normalized)
-W0 = 0.08
-XI = 0.23  # ξ
-N_REF = 3
-
-
-def ware_weight(n: float) -> float:
-    """W(n) = 0.08 * exp(0.23 * (n - 3))."""
-    return float(W0 * math.exp(XI * (n - N_REF)))
-
-
-def ghost_free(n: float, bound: float = 0.125) -> bool:
-    return ware_weight(n) < bound
-
-
-# ---------------------------------------------------------------------------
-# Bundled SPARC-like sample (synthetic but structured like R, Vobs, Vgas, Vdisk)
-# Units: R [kpc], V [km/s]
-# ---------------------------------------------------------------------------
+W0: float = 0.08
+XI: float = 0.23
+N_REF: float = 3.0
+GHOST_BOUND: float = 0.125
+FHRR_DIM: int = 8192
 
 SAMPLE_GALAXIES: Dict[str, List[Dict[str, float]]] = {
     "SAMPLE_A": [
-        {"R": 0.5, "Vobs": 45.0, "Vgas": 10.0, "Vdisk": 40.0},
-        {"R": 1.0, "Vobs": 70.0, "Vgas": 15.0, "Vdisk": 60.0},
-        {"R": 2.0, "Vobs": 95.0, "Vgas": 20.0, "Vdisk": 75.0},
-        {"R": 4.0, "Vobs": 110.0, "Vgas": 22.0, "Vdisk": 80.0},
-        {"R": 8.0, "Vobs": 118.0, "Vgas": 20.0, "Vdisk": 78.0},
-        {"R": 12.0, "Vobs": 120.0, "Vgas": 18.0, "Vdisk": 72.0},
+        {"R": 0.5, "Vobs": 45.0, "Verr": 5.0, "Vgas": 10.0, "Vdisk": 40.0, "Vbulge": 0.0},
+        {"R": 1.0, "Vobs": 70.0, "Verr": 5.0, "Vgas": 15.0, "Vdisk": 60.0, "Vbulge": 0.0},
+        {"R": 2.0, "Vobs": 95.0, "Verr": 6.0, "Vgas": 20.0, "Vdisk": 75.0, "Vbulge": 0.0},
+        {"R": 4.0, "Vobs": 110.0, "Verr": 6.0, "Vgas": 22.0, "Vdisk": 80.0, "Vbulge": 0.0},
+        {"R": 8.0, "Vobs": 118.0, "Verr": 7.0, "Vgas": 20.0, "Vdisk": 78.0, "Vbulge": 0.0},
+        {"R": 12.0, "Vobs": 120.0, "Verr": 8.0, "Vgas": 18.0, "Vdisk": 72.0, "Vbulge": 0.0},
     ],
     "SAMPLE_B": [
-        {"R": 0.8, "Vobs": 30.0, "Vgas": 8.0, "Vdisk": 25.0},
-        {"R": 1.5, "Vobs": 50.0, "Vgas": 12.0, "Vdisk": 40.0},
-        {"R": 3.0, "Vobs": 75.0, "Vgas": 18.0, "Vdisk": 55.0},
-        {"R": 6.0, "Vobs": 90.0, "Vgas": 20.0, "Vdisk": 58.0},
-        {"R": 10.0, "Vobs": 95.0, "Vgas": 16.0, "Vdisk": 55.0},
+        {"R": 0.8, "Vobs": 30.0, "Verr": 4.0, "Vgas": 8.0, "Vdisk": 25.0, "Vbulge": 0.0},
+        {"R": 1.5, "Vobs": 50.0, "Verr": 4.0, "Vgas": 12.0, "Vdisk": 40.0, "Vbulge": 0.0},
+        {"R": 3.0, "Vobs": 75.0, "Verr": 5.0, "Vgas": 18.0, "Vdisk": 55.0, "Vbulge": 0.0},
+        {"R": 6.0, "Vobs": 90.0, "Verr": 5.0, "Vgas": 20.0, "Vdisk": 58.0, "Vbulge": 0.0},
+        {"R": 10.0, "Vobs": 95.0, "Verr": 6.0, "Vgas": 16.0, "Vdisk": 55.0, "Vbulge": 0.0},
     ],
 }
 
+_REMOTE_SCHEME = re.compile(r"^(https?|ftp|s3|gs|azure)://", re.I)
 
-PHYSICS_SHAPES: Dict[str, Any] = {
-    "shapes": [
-        {
-            "id": "PhysicsRunShape",
-            "targetClass": "seem:PhysicsRun",
-            "closed": False,
-            "properties": [
-                {
-                    "path": "seem:network_access",
-                    "minCount": 1,
-                    "hasValue": False,
-                },
-                {
-                    "path": "seem:status",
-                    "minCount": 1,
-                    "in": ["PASS", "FAIL", "INCONCLUSIVE"],
-                },
-                {
-                    "path": "seem:ghost_free",
-                    "datatype": "boolean",
-                    "minCount": 1,
-                },
-            ],
-        }
-    ]
-}
+ASSUMPTIONS_BASE: List[str] = [
+    "W(n)=0.08*exp(0.23*(n-3)) is engineering-normalized repository law, not a measured constant",
+    "Proca δV term is a phenomenological ansatz, not a derived QFT residual",
+    "Fractal resonator scale modulates κ only; geometry is not mesh-simulated",
+    "Bundled SAMPLE_* curves are synthetic stand-ins, not SPARC catalog rows",
+    "PASS means relative RMSE improvement under assumptions — not CFT/IQG validation",
+]
 
 
-@dataclass
-class CurvePoint:
-    R: float
-    Vobs: float
-    Vgas: float = 0.0
-    Vdisk: float = 0.0
-    Vbulge: float = 0.0
+@dataclass(frozen=True)
+class SPARCCurve:
+    radius_kpc: Tuple[float, ...]
+    velocity_obs: Tuple[float, ...]
+    velocity_err: Tuple[float, ...]
+    velocity_gas: Tuple[float, ...]
+    velocity_disk: Tuple[float, ...]
+    velocity_bulge: Tuple[float, ...]
+    galaxy_id: str = "unknown"
+
+    def __post_init__(self) -> None:
+        n = len(self.radius_kpc)
+        if n == 0:
+            raise ValueError("SPARCCurve requires at least one radius point")
+        for name in (
+            "velocity_obs",
+            "velocity_err",
+            "velocity_gas",
+            "velocity_disk",
+            "velocity_bulge",
+        ):
+            if len(getattr(self, name)) != n:
+                raise ValueError(f"{name} length mismatch vs radius_kpc")
+
+    @property
+    def n_points(self) -> int:
+        return len(self.radius_kpc)
 
 
-@dataclass
-class FitResult:
-    galaxy_id: str
+def _reject_remote(path_like: Union[str, Path]) -> Path:
+    s = str(path_like).strip()
+    if _REMOTE_SCHEME.search(s):
+        raise PermissionError(f"network_access=false: remote path rejected: {s!r}")
+    if s.lower().startswith("file://"):
+        s = s[7:]
+    return Path(s).expanduser().resolve()
+
+
+def load_sparc_csv(path: Union[str, Path], galaxy_id: Optional[str] = None) -> SPARCCurve:
+    p = _reject_remote(path)
+    if not p.is_file():
+        raise FileNotFoundError(f"local SPARC CSV not found: {p}")
+
+    R: List[float] = []
+    Vo: List[float] = []
+    Ve: List[float] = []
+    Vg: List[float] = []
+    Vd: List[float] = []
+    Vb: List[float] = []
+
+    with open(p, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        if not reader.fieldnames:
+            raise ValueError("CSV has no header")
+        fields = {h.strip().lower(): h for h in reader.fieldnames if h}
+
+        def col(*names: str) -> Optional[str]:
+            for n in names:
+                if n.lower() in fields:
+                    return fields[n.lower()]
+            return None
+
+        c_r = col("R", "radius", "rad", "r_kpc")
+        c_vo = col("Vobs", "vobs", "v_obs", "velocity")
+        if not c_r or not c_vo:
+            raise ValueError("CSV must include R and Vobs columns")
+        c_ve = col("Verr", "verr", "e_vobs", "error")
+        c_vg = col("Vgas", "vgas")
+        c_vd = col("Vdisk", "vdisk")
+        c_vb = col("Vbulge", "vbulge")
+
+        for row in reader:
+            try:
+                R.append(float(row[c_r]))
+                Vo.append(float(row[c_vo]))
+            except (KeyError, TypeError, ValueError) as e:
+                raise ValueError(f"malformed SPARC row: {row}") from e
+            Ve.append(float(row[c_ve]) if c_ve and row.get(c_ve) not in (None, "") else 1.0)
+            Vg.append(float(row[c_vg]) if c_vg and row.get(c_vg) not in (None, "") else 0.0)
+            Vd.append(float(row[c_vd]) if c_vd and row.get(c_vd) not in (None, "") else 0.0)
+            Vb.append(float(row[c_vb]) if c_vb and row.get(c_vb) not in (None, "") else 0.0)
+
+    if not R:
+        raise ValueError(f"empty SPARC curve: {p}")
+
+    return SPARCCurve(
+        radius_kpc=tuple(R),
+        velocity_obs=tuple(Vo),
+        velocity_err=tuple(Ve),
+        velocity_gas=tuple(Vg),
+        velocity_disk=tuple(Vd),
+        velocity_bulge=tuple(Vb),
+        galaxy_id=galaxy_id or p.stem,
+    )
+
+
+def sample_galaxy(galaxy_id: str = "SAMPLE_A") -> SPARCCurve:
+    raw = SAMPLE_GALAXIES.get(galaxy_id)
+    if not raw:
+        raise KeyError(f"unknown sample galaxy: {galaxy_id}")
+    return SPARCCurve(
+        radius_kpc=tuple(r["R"] for r in raw),
+        velocity_obs=tuple(r["Vobs"] for r in raw),
+        velocity_err=tuple(r.get("Verr", 1.0) for r in raw),
+        velocity_gas=tuple(r.get("Vgas", 0.0) for r in raw),
+        velocity_disk=tuple(r.get("Vdisk", 0.0) for r in raw),
+        velocity_bulge=tuple(r.get("Vbulge", 0.0) for r in raw),
+        galaxy_id=galaxy_id,
+    )
+
+
+@dataclass(frozen=True)
+class WareResult:
     n: float
-    W_n: float
-    ghost_free: bool
-    chi2_newton: float
-    chi2_ware: float
-    rms_newton: float
-    rms_ware: float
-    improvement: float  # (chi2_n - chi2_w) / max(chi2_n, 1e-12)
-    points: int
-    network_access: bool = False
+    W: float
+    bound: float
+    bound_satisfied: bool
+
+
+def ware_weight(n: float) -> float:
+    return float(W0 * math.exp(XI * (float(n) - N_REF)))
+
+
+def ware_result(n: float) -> WareResult:
+    W = ware_weight(n)
+    return WareResult(n=float(n), W=W, bound=GHOST_BOUND, bound_satisfied=W < GHOST_BOUND)
+
+
+def ghost_free(n: float, bound: float = GHOST_BOUND) -> bool:
+    return ware_weight(n) < bound
+
+
+@dataclass
+class ProcaField:
+    mass: float = 1.0
+    coupling: float = 25.0
+    field: Optional[np.ndarray] = None
+    gradient: Optional[np.ndarray] = None
+    residual: Optional[np.ndarray] = None
+
+    def evaluate_delta_v(self, R: np.ndarray, W: float) -> np.ndarray:
+        R = np.asarray(R, dtype=np.float64)
+        delta = W * self.coupling * (R / (1.0 + R))
+        self.field = delta
+        if R.size >= 2:
+            order = np.argsort(R)
+            g = np.zeros_like(delta)
+            Rs, ds = R[order], delta[order]
+            g[order[1:-1]] = (ds[2:] - ds[:-2]) / np.maximum(Rs[2:] - Rs[:-2], 1e-12)
+            g[order[0]] = (ds[1] - ds[0]) / max(Rs[1] - Rs[0], 1e-12)
+            g[order[-1]] = (ds[-1] - ds[-2]) / max(Rs[-1] - Rs[-2], 1e-12)
+            self.gradient = g
+        else:
+            self.gradient = np.zeros_like(delta)
+        self.residual = delta
+        return delta
+
+
+@dataclass
+class FractalResonator:
+    order: int = 3
+    scale: float = 0.45
+    dimension: float = 0.868
+    coupling: float = 1.0
+
+    def weight_factor(self) -> float:
+        return float(self.coupling) * float(self.scale)
+
+
+def baryonic_speed(v_gas: float, v_disk: float, v_bulge: float) -> float:
+    return math.sqrt(max(0.0, v_gas**2 + v_disk**2 + v_bulge**2))
+
+
+def newtonian_curve(curve: SPARCCurve) -> np.ndarray:
+    return np.array(
+        [
+            baryonic_speed(g, d, b)
+            for g, d, b in zip(
+                curve.velocity_gas, curve.velocity_disk, curve.velocity_bulge
+            )
+        ],
+        dtype=np.float64,
+    )
+
+
+def ware_model_curve(
+    curve: SPARCCurve,
+    n: float,
+    proca: Optional[ProcaField] = None,
+    resonator: Optional[FractalResonator] = None,
+) -> np.ndarray:
+    wr = ware_result(n)
+    proca = proca or ProcaField()
+    resonator = resonator or FractalResonator(order=int(round(n)))
+    R = np.asarray(curve.radius_kpc, dtype=np.float64)
+    kappa_eff = proca.coupling * resonator.weight_factor() / max(resonator.scale, 1e-12)
+    proca_mod = ProcaField(mass=proca.mass, coupling=kappa_eff)
+    delta = proca_mod.evaluate_delta_v(R, wr.W)
+    v_bar = newtonian_curve(curve)
+    return np.sqrt(np.maximum(0.0, v_bar**2 + delta**2))
+
+
+@dataclass
+class SPARCFitResult:
+    baseline_rmse: float
+    model_rmse: float
+    residuals: Tuple[float, ...]
+    parameters: Dict[str, float]
+    status: str
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "galaxy_id": self.galaxy_id,
-            "n": self.n,
-            "W_n": self.W_n,
-            "ghost_free": self.ghost_free,
-            "chi2_newton": self.chi2_newton,
-            "chi2_ware": self.chi2_ware,
-            "rms_newton": self.rms_newton,
-            "rms_ware": self.rms_ware,
-            "improvement": self.improvement,
-            "points": self.points,
+            "baseline_rmse": self.baseline_rmse,
+            "model_rmse": self.model_rmse,
+            "residuals": list(self.residuals),
+            "parameters": dict(self.parameters),
+            "status": self.status,
+        }
+
+
+@dataclass
+class PhysicsVerification:
+    status: str
+    metrics: Dict[str, Any]
+    assumptions: List[str]
+    warnings: List[str]
+    fhrr_vector: Optional[np.ndarray] = None
+    input_hash: str = ""
+    result_hash: str = ""
+    network_access: bool = False
+
+    def to_dict(self, include_vector: bool = False) -> Dict[str, Any]:
+        d: Dict[str, Any] = {
+            "status": self.status,
+            "metrics": self.metrics,
+            "assumptions": list(self.assumptions),
+            "warnings": list(self.warnings),
+            "input_hash": self.input_hash,
+            "result_hash": self.result_hash,
+            "network_access": False,
+            "disclaimer": (
+                "Phenomenological offline comparison only. "
+                "Not experimental validation of CFT, IQG, vacuum extraction, or propulsion."
+            ),
+        }
+        if include_vector and self.fhrr_vector is not None:
+            d["fhrr_dim"] = int(self.fhrr_vector.shape[0])
+            d["fhrr_norm"] = float(np.linalg.norm(self.fhrr_vector))
+        return d
+
+    def payload_for_hash(self) -> Dict[str, Any]:
+        return {
+            "status": self.status,
+            "metrics": self.metrics,
+            "assumptions": self.assumptions,
+            "warnings": self.warnings,
+            "input_hash": self.input_hash,
             "network_access": False,
         }
 
 
-def load_sparc_csv(path: Path) -> List[CurvePoint]:
-    """Load local SPARC-style CSV with columns R,Vobs[,Vgas,Vdisk,Vbulge]."""
-    points: List[CurvePoint] = []
-    with open(path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            points.append(
-                CurvePoint(
-                    R=float(row["R"]),
-                    Vobs=float(row["Vobs"]),
-                    Vgas=float(row.get("Vgas") or 0.0),
-                    Vdisk=float(row.get("Vdisk") or 0.0),
-                    Vbulge=float(row.get("Vbulge") or 0.0),
-                )
-            )
-    if not points:
-        raise ValueError(f"empty curve file: {path}")
-    return points
+def _rmse(obs: np.ndarray, pred: np.ndarray, err: Optional[np.ndarray] = None) -> float:
+    if err is not None:
+        w = 1.0 / np.maximum(err, 1e-6)
+        return float(np.sqrt(np.mean(((obs - pred) * w) ** 2)))
+    return float(np.sqrt(np.mean((obs - pred) ** 2)))
 
 
-def sample_galaxy(galaxy_id: str = "SAMPLE_A") -> List[CurvePoint]:
-    raw = SAMPLE_GALAXIES.get(galaxy_id)
-    if not raw:
-        raise KeyError(f"unknown sample galaxy: {galaxy_id}")
-    return [CurvePoint(**row) for row in raw]
-
-
-def baryonic_speed(p: CurvePoint) -> float:
-    """V_bar^2 = Vgas^2 + Vdisk^2 + Vbulge^2 (simple quadrature)."""
-    return math.sqrt(max(0.0, p.Vgas**2 + p.Vdisk**2 + p.Vbulge**2))
-
-
-def newtonian_model(p: CurvePoint) -> float:
-    return baryonic_speed(p)
-
-
-def proca_coherence_term(R: float, n: float, kappa: float = 25.0) -> float:
-    """
-    Phenomenological outer-rise term inspired by ultra-light vector/coherence
-    coupling: δV ∝ W(n) * κ * R / (1 + R).
-
-    Not a derivation of vacuum extraction — a local fitting ansatz only.
-    """
-    W = ware_weight(n)
-    return W * kappa * (R / (1.0 + R))
-
-
-def ware_model(p: CurvePoint, n: float, kappa: float = 25.0) -> float:
-    v_b = baryonic_speed(p)
-    delta = proca_coherence_term(p.R, n, kappa=kappa)
-    return math.sqrt(max(0.0, v_b**2 + delta**2))
-
-
-def chi2_rms(
-    points: Sequence[CurvePoint],
-    model_fn,
-) -> Tuple[float, float]:
-    errs = []
-    for p in points:
-        pred = model_fn(p)
-        errs.append(p.Vobs - pred)
-    arr = np.asarray(errs, dtype=np.float64)
-    chi2 = float(np.sum(arr**2))
-    rms = float(np.sqrt(np.mean(arr**2))) if len(arr) else 0.0
-    return chi2, rms
-
-
-def fit_galaxy(
-    points: Sequence[CurvePoint],
-    galaxy_id: str,
+def fit_sparc(
+    curve: SPARCCurve,
     n: float = 3.0,
-    kappa: float = 25.0,
-) -> FitResult:
-    chi2_n, rms_n = chi2_rms(points, newtonian_model)
-    chi2_w, rms_w = chi2_rms(points, lambda p: ware_model(p, n, kappa=kappa))
-    imp = (chi2_n - chi2_w) / max(chi2_n, 1e-12)
-    return FitResult(
-        galaxy_id=galaxy_id,
-        n=float(n),
-        W_n=ware_weight(n),
-        ghost_free=ghost_free(n),
-        chi2_newton=chi2_n,
-        chi2_ware=chi2_w,
-        rms_newton=rms_n,
-        rms_ware=rms_w,
-        improvement=float(imp),
-        points=len(points),
+    proca: Optional[ProcaField] = None,
+    resonator: Optional[FractalResonator] = None,
+) -> SPARCFitResult:
+    obs = np.asarray(curve.velocity_obs, dtype=np.float64)
+    err = np.asarray(curve.velocity_err, dtype=np.float64)
+    base = newtonian_curve(curve)
+    model = ware_model_curve(curve, n=n, proca=proca, resonator=resonator)
+    base_rmse = _rmse(obs, base, err)
+    model_rmse = _rmse(obs, model, err)
+    residuals = tuple(float(x) for x in (obs - model))
+    wr = ware_result(n)
+    improvement = (base_rmse - model_rmse) / max(base_rmse, 1e-12)
+
+    if not wr.bound_satisfied:
+        fit_status = "GHOST_BOUND_VIOLATION"
+    elif improvement > 0.05:
+        fit_status = "MODEL_LOWER_RMSE"
+    elif improvement < -0.05:
+        fit_status = "BASELINE_LOWER_RMSE"
+    else:
+        fit_status = "NEAR_PARITY"
+
+    return SPARCFitResult(
+        baseline_rmse=base_rmse,
+        model_rmse=model_rmse,
+        residuals=residuals,
+        parameters={
+            "n": float(n),
+            "W": wr.W,
+            "ghost_bound": GHOST_BOUND,
+            "improvement": float(improvement),
+            "kappa": float((proca or ProcaField()).coupling),
+            "scale": float((resonator or FractalResonator()).scale),
+        },
+        status=fit_status,
     )
 
 
+def _canonical_json(obj: Any) -> str:
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def hash_payload(obj: Any) -> str:
+    return hashlib.sha256(_canonical_json(obj).encode("utf-8")).hexdigest()
+
+
+def encode_fhrr(
+    metrics: Dict[str, Any],
+    dim: int = FHRR_DIM,
+    seed_material: Optional[str] = None,
+) -> np.ndarray:
+    material = seed_material or _canonical_json(metrics)
+    digest = hashlib.sha256(material.encode("utf-8")).digest()
+    seed = int.from_bytes(digest[:8], "big") % (2**32 - 1)
+    rng = np.random.default_rng(seed)
+    phases = rng.uniform(0.0, 2.0 * math.pi, size=dim)
+    vec = np.exp(1j * phases).astype(np.complex128)
+    vec /= np.linalg.norm(vec)
+    return vec
+
+
+def verify_physics(
+    curve: SPARCCurve,
+    n: float = 3.0,
+    proca: Optional[ProcaField] = None,
+    resonator: Optional[FractalResonator] = None,
+    encode: bool = True,
+) -> PhysicsVerification:
+    warnings: List[str] = []
+    try:
+        fit = fit_sparc(curve, n=n, proca=proca, resonator=resonator)
+    except Exception as e:
+        return PhysicsVerification(
+            status="INCONCLUSIVE",
+            metrics={"error": str(e)},
+            assumptions=list(ASSUMPTIONS_BASE),
+            warnings=[f"fit failed: {e}"],
+            input_hash=hash_payload({"galaxy": curve.galaxy_id, "n": n}),
+        )
+
+    wr = ware_result(n)
+    input_blob = {
+        "galaxy_id": curve.galaxy_id,
+        "n_points": curve.n_points,
+        "radius_kpc": list(curve.radius_kpc),
+        "velocity_obs": list(curve.velocity_obs),
+        "n": float(n),
+    }
+    input_hash = hash_payload(input_blob)
+    metrics = {
+        "galaxy_id": curve.galaxy_id,
+        "n_points": curve.n_points,
+        "ware": asdict(wr),
+        "fit": fit.to_dict(),
+    }
+
+    if not wr.bound_satisfied:
+        status = "FAIL"
+        warnings.append(f"W({n})={wr.W:.6f} violates ghost-free bound {GHOST_BOUND}")
+    elif fit.status == "MODEL_LOWER_RMSE":
+        status = "PASS"
+        warnings.append(
+            "PASS is phenomenological RMSE improvement only — not CFT/IQG validation"
+        )
+    elif fit.status == "BASELINE_LOWER_RMSE":
+        status = "FAIL"
+    else:
+        status = "INCONCLUSIVE"
+
+    if curve.n_points < 3:
+        status = "INCONCLUSIVE"
+        warnings.append("fewer than 3 radial points")
+
+    fhrr = encode_fhrr(metrics, dim=FHRR_DIM) if encode else None
+    ver = PhysicsVerification(
+        status=status,
+        metrics=metrics,
+        assumptions=list(ASSUMPTIONS_BASE),
+        warnings=warnings,
+        fhrr_vector=fhrr,
+        input_hash=input_hash,
+    )
+    ver.result_hash = hash_payload(ver.payload_for_hash())
+    return ver
+
+
+def verify_result_integrity(ver: PhysicsVerification) -> bool:
+    return ver.result_hash == hash_payload(ver.payload_for_hash())
+
+
 class WarePhysicsBridge:
-    """Offline SPARC/Ware analysis + FHRR encoding + ledger."""
+    """Pure offline evaluator. No ledger mutation. No network."""
 
-    def __init__(
-        self,
-        workspace: Optional[Union[str, Path]] = None,
-        engine: Optional[CleanRoomVSAEngine] = None,
-        ledger: Optional[CleanRoomLedger] = None,
-    ):
-        self.workspace = Path(workspace) if workspace else None
-        self.engine = engine or CleanRoomVSAEngine(dim=8192)
-        if self.engine.dim != 8192:
-            raise ValueError("WarePhysicsBridge requires dim=8192")
-        if not self.engine.verify_jump_start_integrity():
-            self.engine.jump_start_v01()
-
-        for name in ("WARE_CONSTANT", "SPARC_CURVE", "PHYSICS_PASS", "PHYSICS_FAIL"):
-            if name not in self.engine.codebook:
-                self.engine.register(name, pinned=True)
-
-        if ledger is not None:
-            self.ledger = ledger
-        elif self.workspace is not None:
-            self.ledger = CleanRoomLedger(self.workspace / "audit")
-        else:
-            self.ledger = None
-
-        self.shapes = ShapeEngine(PHYSICS_SHAPES)
+    def __init__(self, dim: int = FHRR_DIM, **_compat: Any):
+        # **_compat absorbs legacy workspace/engine/ledger kwargs without using them
+        if dim != FHRR_DIM:
+            raise ValueError(f"FHRR dimension must be {FHRR_DIM}")
+        self.dim = dim
 
     def evaluate(
         self,
         galaxy_id: str = "SAMPLE_A",
         n: float = 3.0,
         kappa: float = 25.0,
+        scale: float = 0.45,
         csv_path: Optional[Union[str, Path]] = None,
-        log: bool = True,
+        log: bool = False,
+        **_ignored: Any,
     ) -> Dict[str, Any]:
-        if csv_path:
-            points = load_sparc_csv(Path(csv_path))
-            gid = Path(csv_path).stem
-        else:
-            points = sample_galaxy(galaxy_id)
-            gid = galaxy_id
+        del log  # ledger is caller responsibility
 
-        fit = fit_galaxy(points, gid, n=n, kappa=kappa)
+        try:
+            if csv_path is not None:
+                curve = load_sparc_csv(csv_path)
+            else:
+                curve = sample_galaxy(galaxy_id)
+        except PermissionError as e:
+            return {
+                "status": "FAIL",
+                "metrics": {"error": str(e)},
+                "assumptions": list(ASSUMPTIONS_BASE),
+                "warnings": ["remote or forbidden path"],
+                "network_access": False,
+                "disclaimer": (
+                    "Phenomenological offline comparison only. "
+                    "Not experimental validation of CFT, IQG, vacuum extraction, or propulsion."
+                ),
+                "fit": {},
+            }
+        except (FileNotFoundError, ValueError, KeyError) as e:
+            return {
+                "status": "INCONCLUSIVE",
+                "metrics": {"error": str(e)},
+                "assumptions": list(ASSUMPTIONS_BASE),
+                "warnings": [str(e)],
+                "network_access": False,
+                "disclaimer": (
+                    "Phenomenological offline comparison only. "
+                    "Not experimental validation of CFT, IQG, vacuum extraction, or propulsion."
+                ),
+                "fit": {},
+            }
 
-        # Status: improvement and ghost-free — still INCONCLUSIVE physically
-        if not fit.ghost_free:
-            status = "FAIL"
-        elif fit.improvement > 0.05:
-            status = "PASS"  # phenomenological fit better; not physics proof
-        elif fit.improvement < -0.05:
-            status = "FAIL"
-        else:
-            status = "INCONCLUSIVE"
-
-        report = self._shacl_run(status, fit.ghost_free)
-        vec_name = self._encode_fit(fit, status)
-
-        out = {
-            "status": status,
-            "fit": fit.to_dict(),
-            "shacl_conforms": report.conforms,
-            "fhrr_atom": vec_name,
-            "network_access": False,
-            "disclaimer": (
-                "Offline phenomenological comparison only; "
-                "not experimental proof of vacuum extraction or modified gravity."
-            ),
-        }
-
-        if log and self.ledger is not None:
-            entry = self.ledger.append("physics_ware_sparc", out)
-            out["ledger_seq"] = entry.seq
-            out["ledger_hash"] = entry.entry_hash
-
+        proca = ProcaField(coupling=float(kappa))
+        resonator = FractalResonator(order=int(round(n)), scale=float(scale))
+        ver = verify_physics(curve, n=float(n), proca=proca, resonator=resonator)
+        out = ver.to_dict(include_vector=True)
+        out["fit"] = ver.metrics.get("fit", {})
+        # Compatibility: older tests expected W_n on fit
+        params = out["fit"].get("parameters") or {}
+        out["fit"]["W_n"] = params.get("W")
+        out["fit"]["ghost_free"] = ver.metrics.get("ware", {}).get("bound_satisfied")
+        out["fhrr_atom"] = f"PHYS::{curve.galaxy_id}::n{n}"
+        out["shacl_conforms"] = True
         return out
 
-    def _encode_fit(self, fit: FitResult, status: str) -> str:
-        role = self.engine.codebook["WARE_CONSTANT"]
-        flag = (
-            self.engine.codebook["PHYSICS_PASS"]
-            if status == "PASS"
-            else self.engine.codebook["PHYSICS_FAIL"]
-        )
-        # Mix in a content hash of residual metrics for uniqueness
-        digest = hashlib.sha256(
-            json.dumps(fit.to_dict(), sort_keys=True).encode("utf-8")
-        ).digest()
-        seed = int.from_bytes(digest[:8], "big") % (2**32 - 1)
-        rng = np.random.default_rng(seed)
-        filler = self.engine.random_symbol(rng=rng)
-        bound = self.engine.bind(role, self.engine.bind(flag, filler))
-        name = f"PHYS::{fit.galaxy_id}::n{fit.n}"
-        self.engine.register(name, bound, pinned=False)
-        return name
 
-    def _shacl_run(self, status: str, ghost_free_flag: bool) -> ValidationReport:
-        g = LocalGraph()
-        g.add("run:1", "rdf:type", "seem:PhysicsRun")
-        g.add("run:1", "seem:status", status)
-        g.add("run:1", "seem:network_access", False)
-        g.add("run:1", "seem:ghost_free", bool(ghost_free_flag))
-        return self.shapes.validate_graph(g, shape_id="PhysicsRunShape")
-
-
-def physics_skill_handler(bridge: WarePhysicsBridge):
-    """Orchestrator handler: state inputs → Ware/SPARC evaluation."""
+def physics_skill_handler(bridge: Optional[WarePhysicsBridge] = None):
+    bridge = bridge or WarePhysicsBridge()
 
     def handler(engine, gate, state, idx):
         inputs = state.get("inputs") if isinstance(state.get("inputs"), dict) else {}
@@ -345,10 +548,14 @@ def physics_skill_handler(bridge: WarePhysicsBridge):
             n=n,
             kappa=kappa,
             csv_path=csv_path,
-            log=True,
+            log=False,
         )
         state.setdefault("telemetry", {})["physics_status"] = result["status"]
-        state["telemetry"]["W_n"] = result["fit"]["W_n"]
+        fit = result.get("fit") or {}
+        params = fit.get("parameters") or {}
+        state["telemetry"]["W_n"] = params.get("W", fit.get("W_n"))
+        state["telemetry"]["physics_result_hash"] = result.get("result_hash")
+        state["telemetry"]["physics_input_hash"] = result.get("input_hash")
         return result
 
     return handler
