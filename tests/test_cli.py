@@ -79,12 +79,12 @@ def test_sign_and_run_fail_unsigned() -> None:
         pkg_path = Path(tmp) / "pkg.json"
         pkg_path.write_text(json.dumps(_pkg()), encoding="utf-8")
 
-        # Unsigned run must fail closed (require signature by default)
         rc = main(["--workspace", str(ws), "run", "--package", str(pkg_path)])
         assert rc == 2
 
         sk, vk = generate_keypair()
-        save_keypair(ws / "keys" / "skill_ed25519", sk, vk)
+        (ws / "keys").mkdir(parents=True, exist_ok=True)
+        save_keypair(ws / "keys", sk, vk, name="skill_ed25519")
         signed = sign_package(_pkg(), sk)
         signed_path = Path(tmp) / "pkg.signed.json"
         signed_path.write_text(json.dumps(signed), encoding="utf-8")
@@ -143,7 +143,15 @@ def test_missing_package_fail_closed() -> None:
         ws = str(Path(tmp) / "ws")
         main(["--workspace", ws, "init"])
         try:
-            main(["--workspace", ws, "run", "--package", str(Path(tmp) / "missing.json")])
+            main(
+                [
+                    "--workspace",
+                    ws,
+                    "run",
+                    "--package",
+                    str(Path(tmp) / "missing.json"),
+                ]
+            )
             raise AssertionError("expected SystemExit")
         except SystemExit as e:
             assert e.code == 1
