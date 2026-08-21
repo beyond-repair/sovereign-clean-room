@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Ware Constant Physics & SPARC Data Bridge — pure offline kernel.
+Ware Constant Physics & SPARC Data Bridge — pure offline kernel (v1 frozen).
 
 Scientific boundary (locked):
   Phenomenological rotation-curve comparison + FHRR encoding only.
@@ -11,11 +11,20 @@ Architectural boundary (locked):
   This module does not mutate the audit ledger or sign packages.
   CLI / Orchestrator / Gate own audit and cryptography.
 
-Canonical Ware law:
+Canonical Ware law (frozen):
   W(n) = 0.08 * exp(0.23 * (n - 3))
-  Ghost-free: W(n) < 0.125
+  W(3) = 0.08
+  ghost_free := W(n) < 0.125
 
-network_access: false — local paths only; remote schemes hard-fail.
+Claim flags (immutable on every PhysicsVerification):
+  claim_class = "phenomenological_hypothesis"
+  experimental_validation = false
+  energy_extraction_validated = false
+  thrust_validated = false
+
+CLI exit codes: PASS=0 FAIL=2 INCONCLUSIVE=3
+FHRR: dim=8192, unit norm
+network_access: false — local paths only.
 """
 
 from __future__ import annotations
@@ -25,17 +34,26 @@ import hashlib
 import json
 import math
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
+# ---- frozen invariants ----
 W0: float = 0.08
 XI: float = 0.23
 N_REF: float = 3.0
 GHOST_BOUND: float = 0.125
 FHRR_DIM: int = 8192
+
+CLAIM_CLASS: str = "phenomenological_hypothesis"
+CLAIM_FLAGS: Dict[str, Any] = {
+    "claim_class": CLAIM_CLASS,
+    "experimental_validation": False,
+    "energy_extraction_validated": False,
+    "thrust_validated": False,
+}
 
 SAMPLE_GALAXIES: Dict[str, List[Dict[str, float]]] = {
     "SAMPLE_A": [
@@ -288,6 +306,14 @@ class SPARCFitResult:
 
 @dataclass
 class PhysicsVerification:
+    """
+    Machine-readable verification object.
+
+    Claim flags are fixed at construction and participate in result_hash so
+    downstream consumers cannot strip hypothesis-grade status while keeping
+    a valid hash of the numerical result alone.
+    """
+
     status: str
     metrics: Dict[str, Any]
     assumptions: List[str]
@@ -296,6 +322,27 @@ class PhysicsVerification:
     input_hash: str = ""
     result_hash: str = ""
     network_access: bool = False
+    # Immutable scientific classification (v1 contract)
+    claim_class: str = field(default=CLAIM_CLASS)
+    experimental_validation: bool = field(default=False)
+    energy_extraction_validated: bool = field(default=False)
+    thrust_validated: bool = field(default=False)
+
+    def __post_init__(self) -> None:
+        # Re-assert frozen claim flags even if a caller passes overrides
+        object.__setattr__(self, "claim_class", CLAIM_CLASS)
+        object.__setattr__(self, "experimental_validation", False)
+        object.__setattr__(self, "energy_extraction_validated", False)
+        object.__setattr__(self, "thrust_validated", False)
+        object.__setattr__(self, "network_access", False)
+
+    def claim_block(self) -> Dict[str, Any]:
+        return {
+            "claim_class": self.claim_class,
+            "experimental_validation": self.experimental_validation,
+            "energy_extraction_validated": self.energy_extraction_validated,
+            "thrust_validated": self.thrust_validated,
+        }
 
     def to_dict(self, include_vector: bool = False) -> Dict[str, Any]:
         d: Dict[str, Any] = {
@@ -306,6 +353,7 @@ class PhysicsVerification:
             "input_hash": self.input_hash,
             "result_hash": self.result_hash,
             "network_access": False,
+            **self.claim_block(),
             "disclaimer": (
                 "Phenomenological offline comparison only. "
                 "Not experimental validation of CFT, IQG, vacuum extraction, or propulsion."
@@ -324,6 +372,7 @@ class PhysicsVerification:
             "warnings": self.warnings,
             "input_hash": self.input_hash,
             "network_access": False,
+            **self.claim_block(),
         }
 
 
@@ -409,13 +458,15 @@ def verify_physics(
     try:
         fit = fit_sparc(curve, n=n, proca=proca, resonator=resonator)
     except Exception as e:
-        return PhysicsVerification(
+        ver = PhysicsVerification(
             status="INCONCLUSIVE",
             metrics={"error": str(e)},
             assumptions=list(ASSUMPTIONS_BASE),
             warnings=[f"fit failed: {e}"],
             input_hash=hash_payload({"galaxy": curve.galaxy_id, "n": n}),
         )
+        ver.result_hash = hash_payload(ver.payload_for_hash())
+        return ver
 
     wr = ware_result(n)
     input_blob = {
@@ -471,7 +522,6 @@ class WarePhysicsBridge:
     """Pure offline evaluator. No ledger mutation. No network."""
 
     def __init__(self, dim: int = FHRR_DIM, **_compat: Any):
-        # **_compat absorbs legacy workspace/engine/ledger kwargs without using them
         if dim != FHRR_DIM:
             raise ValueError(f"FHRR dimension must be {FHRR_DIM}")
         self.dim = dim
@@ -486,7 +536,22 @@ class WarePhysicsBridge:
         log: bool = False,
         **_ignored: Any,
     ) -> Dict[str, Any]:
-        del log  # ledger is caller responsibility
+        del log
+
+        def _err_out(status: str, err: str, warnings: List[str]) -> Dict[str, Any]:
+            return {
+                "status": status,
+                "metrics": {"error": err},
+                "assumptions": list(ASSUMPTIONS_BASE),
+                "warnings": warnings,
+                "network_access": False,
+                **dict(CLAIM_FLAGS),
+                "disclaimer": (
+                    "Phenomenological offline comparison only. "
+                    "Not experimental validation of CFT, IQG, vacuum extraction, or propulsion."
+                ),
+                "fit": {},
+            }
 
         try:
             if csv_path is not None:
@@ -494,38 +559,15 @@ class WarePhysicsBridge:
             else:
                 curve = sample_galaxy(galaxy_id)
         except PermissionError as e:
-            return {
-                "status": "FAIL",
-                "metrics": {"error": str(e)},
-                "assumptions": list(ASSUMPTIONS_BASE),
-                "warnings": ["remote or forbidden path"],
-                "network_access": False,
-                "disclaimer": (
-                    "Phenomenological offline comparison only. "
-                    "Not experimental validation of CFT, IQG, vacuum extraction, or propulsion."
-                ),
-                "fit": {},
-            }
+            return _err_out("FAIL", str(e), ["remote or forbidden path"])
         except (FileNotFoundError, ValueError, KeyError) as e:
-            return {
-                "status": "INCONCLUSIVE",
-                "metrics": {"error": str(e)},
-                "assumptions": list(ASSUMPTIONS_BASE),
-                "warnings": [str(e)],
-                "network_access": False,
-                "disclaimer": (
-                    "Phenomenological offline comparison only. "
-                    "Not experimental validation of CFT, IQG, vacuum extraction, or propulsion."
-                ),
-                "fit": {},
-            }
+            return _err_out("INCONCLUSIVE", str(e), [str(e)])
 
         proca = ProcaField(coupling=float(kappa))
         resonator = FractalResonator(order=int(round(n)), scale=float(scale))
         ver = verify_physics(curve, n=float(n), proca=proca, resonator=resonator)
         out = ver.to_dict(include_vector=True)
         out["fit"] = ver.metrics.get("fit", {})
-        # Compatibility: older tests expected W_n on fit
         params = out["fit"].get("parameters") or {}
         out["fit"]["W_n"] = params.get("W")
         out["fit"]["ghost_free"] = ver.metrics.get("ware", {}).get("bound_satisfied")
@@ -556,6 +598,10 @@ def physics_skill_handler(bridge: Optional[WarePhysicsBridge] = None):
         state["telemetry"]["W_n"] = params.get("W", fit.get("W_n"))
         state["telemetry"]["physics_result_hash"] = result.get("result_hash")
         state["telemetry"]["physics_input_hash"] = result.get("input_hash")
+        state["telemetry"]["claim_class"] = result.get("claim_class")
+        state["telemetry"]["experimental_validation"] = result.get(
+            "experimental_validation", False
+        )
         return result
 
     return handler
