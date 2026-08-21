@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Sovereign Clean-Room VSA Core + BaNEL Integration Framework
-(v1.3.2 — Ed25519 Skill Signature Gate)
+(v1.3.3 — SHACL-aware Gate)
 
 Complete production-grade implementation featuring:
 - Single-pass unbind resonator loop with strict top-k cardinality
@@ -10,6 +10,7 @@ Complete production-grade implementation featuring:
 - Sparse codebook pruning (utility + redundancy)
 - Jump-Start v0.1 primitive registry
 - Ed25519 skill package verification at the Clean-Room boundary
+- Optional offline SHACL-subset constitutional validation
 - Atomic disk persistence & sandboxed execution
 """
 
@@ -22,7 +23,6 @@ import shutil
 from pathlib import Path
 
 
-# Jump-Start v0.1 primitives — never pruned unless explicitly unpinned
 DEFAULT_PROTECTED_ATOMS: Set[str] = {
     "SELF",
     "ENVIRONMENT",
@@ -81,7 +81,7 @@ class BaNELController:
 
 
 class CleanRoomVSAEngine:
-    """Core FHRR Engine (v1.3.2)."""
+    """Core FHRR Engine (v1.3.3)."""
 
     def __init__(
         self,
@@ -476,10 +476,10 @@ class CleanRoomGate:
     """
     Sovereign Clean-Room Boundary Isolator.
 
-    - Sandboxes untrusted callables
-    - Verifies Ed25519 skill package signatures before skill execution
-    - Enforces network_access=false on packages
-    - Records failures in BaNEL
+    - Optional SHACL-subset constitutional validation
+    - Ed25519 skill package signatures
+    - network_access=false enforcement
+    - Sandboxed execution + BaNEL failures
     """
 
     def __init__(
@@ -487,10 +487,20 @@ class CleanRoomGate:
         vsa_engine: CleanRoomVSAEngine,
         trusted_verify_keys: Optional[Iterable[str]] = None,
         require_skill_signature: bool = True,
+        enable_shacl: bool = True,
     ):
         self.vsa = vsa_engine
         self.trusted_verify_keys: List[str] = [k.strip() for k in (trusted_verify_keys or []) if k]
         self.require_skill_signature = require_skill_signature
+        self.enable_shacl = enable_shacl
+        self._shacl = None
+        if enable_shacl:
+            try:
+                from clean_room_shacl import ConstitutionalValidator
+
+                self._shacl = ConstitutionalValidator(engine=vsa_engine)
+            except Exception:
+                self._shacl = None
 
     def add_trusted_verify_key(self, verify_key_hex: str) -> None:
         k = verify_key_hex.strip()
@@ -507,10 +517,15 @@ class CleanRoomGate:
         if sov.get("network_access") is not False:
             raise PermissionError("skill rejected: network_access must be false")
 
+        if self.enable_shacl and self._shacl is not None:
+            report = self._shacl.validate_skill_package(package)
+            if not report.conforms:
+                msgs = "; ".join(v.message for v in report.violations) or "shape violation"
+                raise PermissionError(f"skill rejected by SHACL: {msgs}")
+
         if not self.require_skill_signature:
             return
 
-        # Local import keeps core loadable if PyNaCl missing until skill path used
         from skill_crypto import verify_package
 
         if not self.trusted_verify_keys:
@@ -580,10 +595,6 @@ class CleanRoomGate:
         context_vector: Optional[np.ndarray] = None,
         **kwargs,
     ) -> Dict[str, Any]:
-        """
-        Verify package signature + sovereignty, then sandbox-execute payload.
-        Unsigned / tampered packages never reach payload_func.
-        """
         skill_id = package.get("manifest", {}).get("skill_id", "unknown_skill")
         try:
             self.verify_skill_package(package)
@@ -602,7 +613,7 @@ class CleanRoomGate:
                 "banel_evidence": evidence,
             }
 
-        return self.execute_sandboxed_computation(
+        outcome = self.execute_sandboxed_computation(
             f"skill:{skill_id}",
             payload_func,
             *args,
@@ -610,9 +621,29 @@ class CleanRoomGate:
             **kwargs,
         )
 
+        # Post-condition SHACL on gate result envelope
+        if self.enable_shacl and self._shacl is not None and outcome.get("status") in (
+            "PASS",
+            "FAIL",
+        ):
+            report = self._shacl.validate_gate_result(outcome)
+            if not report.conforms:
+                msgs = "; ".join(v.message for v in report.violations)
+                outcome = {
+                    "status": "FAIL",
+                    "task": f"skill_shacl_post:{skill_id}",
+                    "output": None,
+                    "error": f"post SHACL: {msgs}",
+                    "elapsed": outcome.get("elapsed", 0.0),
+                    "banel_evidence": self.vsa.banel.record_failure(
+                        f"skill_shacl_post:{skill_id}", msgs, context_vector
+                    ),
+                }
+        return outcome
+
 
 if __name__ == "__main__":
-    print("[*] Initializing Sovereign Clean-Room VSA Engine (v1.3.2)...")
+    print("[*] Initializing Sovereign Clean-Room VSA Engine (v1.3.3)...")
     vsa = CleanRoomVSAEngine(dim=8192, sparsity_k=256, iters=7, min_invertibility=0.92)
     manifest = vsa.jump_start_v01()
     print(f"[+] Jump-Start: {manifest}")
