@@ -56,6 +56,11 @@ def test_parser_subcommands() -> None:
         ["shacl", "--data", "x.json"],
         ["run", "--package", "x.json"],
         ["daemon", "start", "--package", "x.json"],
+        ["jkillnhide", "baseline"],
+        ["jkillnhide", "check"],
+        ["jkillnhide", "enforce"],
+        ["physics", "eval"],
+        ["physics", "eval", "--galaxy", "SAMPLE_B", "--n", "3"],
     ):
         args = p.parse_args(cmd)
         assert hasattr(args, "func")
@@ -67,6 +72,7 @@ def test_init_and_status() -> None:
         ws = str(Path(tmp) / "ws")
         assert main(["--workspace", ws, "init"]) == 0
         assert (Path(ws) / "twin_state").is_dir()
+        assert (Path(ws) / "defense").is_dir()
         assert main(["--workspace", ws, "status"]) == 0
         assert main(["--workspace", ws, "status", "--strict"]) == 0
         print("[OK] init + status")
@@ -158,6 +164,64 @@ def test_missing_package_fail_closed() -> None:
         print("[OK] missing package fail-closed")
 
 
+def test_jkillnhide_baseline_check_enforce() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = str(Path(tmp) / "ws")
+        assert main(["--workspace", ws, "init"]) == 0
+
+        # No baseline → check exits 3
+        rc = main(["--workspace", ws, "jkillnhide", "check"])
+        assert rc == 3
+
+        assert main(["--workspace", ws, "jkillnhide", "baseline"]) == 0
+        assert (Path(ws) / "defense" / "baseline.json").is_file()
+
+        rc = main(["--workspace", ws, "jkillnhide", "check"])
+        assert rc == 0
+
+        rc = main(["--workspace", ws, "jkillnhide", "enforce"])
+        assert rc == 0
+
+        # Tamper watched surface
+        keys = Path(ws) / "keys"
+        keys.mkdir(exist_ok=True)
+        pub = keys / "root.pub"
+        pub.write_text("trusted\n", encoding="utf-8")
+        assert main(["--workspace", ws, "jkillnhide", "baseline"]) == 0
+        pub.write_text("TAMPERED\n", encoding="utf-8")
+        rc = main(["--workspace", ws, "jkillnhide", "check"])
+        assert rc == 2
+        rc = main(["--workspace", ws, "jkillnhide", "enforce"])
+        assert rc == 2
+        print("[OK] jkillnhide baseline/check/enforce")
+
+
+def test_physics_eval() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = str(Path(tmp) / "ws")
+        assert main(["--workspace", ws, "init"]) == 0
+        rc = main(
+            [
+                "--workspace",
+                ws,
+                "physics",
+                "eval",
+                "--galaxy",
+                "SAMPLE_A",
+                "--n",
+                "3",
+            ]
+        )
+        assert rc in (0, 2, 3)  # PASS / FAIL / INCONCLUSIVE
+
+        # Ghost-free violation at high n → FAIL (exit 2)
+        rc = main(
+            ["--workspace", ws, "physics", "eval", "--galaxy", "SAMPLE_A", "--n", "5"]
+        )
+        assert rc == 2
+        print("[OK] physics eval")
+
+
 if __name__ == "__main__":
     test_parser_subcommands()
     test_init_and_status()
@@ -166,4 +230,6 @@ if __name__ == "__main__":
     test_memory_remember_recall()
     test_shacl_check_package()
     test_missing_package_fail_closed()
+    test_jkillnhide_baseline_check_enforce()
+    test_physics_eval()
     print("--- CLI TESTS PASSED ---")
