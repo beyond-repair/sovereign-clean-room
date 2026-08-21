@@ -393,7 +393,6 @@ def cmd_dashboard_start(args: argparse.Namespace) -> int:
 
 
 def cmd_jkillnhide(args: argparse.Namespace) -> int:
-    """Workspace integrity: baseline / check / enforce."""
     from clean_room_jkillnhide import JKillnHideWatchdog
     from clean_room_ledger import CleanRoomLedger
 
@@ -421,27 +420,24 @@ def cmd_jkillnhide(args: argparse.Namespace) -> int:
                 indent=2,
             )
         )
-        twin = ws / "twin_state"
-        eng.save(twin)
+        eng.save(ws / "twin_state")
         _ok(f"integrity baseline written ({len(hashes)} files)")
         return 0
 
     if action == "check":
         report = wd.scan(log=not args.no_log)
         print(json.dumps(report.to_dict(), indent=2))
-        twin = ws / "twin_state"
-        eng.save(twin)
+        eng.save(ws / "twin_state")
         if report.status == "CLEAN":
             return 0
         if report.status == "MISSING_BASELINE":
             return 3
-        return 2  # DRIFT
+        return 2
 
     if action == "enforce":
         decision = wd.enforce()
         print(json.dumps(decision, indent=2))
-        twin = ws / "twin_state"
-        eng.save(twin)
+        eng.save(ws / "twin_state")
         return 0 if decision.get("allow_execution") else 2
 
     _die(f"unknown jkillnhide action: {action}")
@@ -449,40 +445,56 @@ def cmd_jkillnhide(args: argparse.Namespace) -> int:
 
 
 def cmd_physics(args: argparse.Namespace) -> int:
-    """Ware/SPARC phenomenological curve evaluation (offline)."""
+    """
+    Ware/SPARC phenomenological evaluation.
+
+    Physics kernel is pure; this CLI layer optionally appends an audit event.
+    """
     from clean_room_physics import WarePhysicsBridge
     from clean_room_ledger import CleanRoomLedger
 
     ws = _workspace(args.workspace)
-    eng = _load_engine(ws)
-    ledger = CleanRoomLedger(ws / "audit")
-    bridge = WarePhysicsBridge(workspace=ws, engine=eng, ledger=ledger)
-
     action = args.physics_cmd
     if action != "eval":
         _die(f"unknown physics action: {action}")
 
-    csv_path = Path(args.csv) if args.csv else None
-    if csv_path is not None and not csv_path.is_file():
-        _die(f"CSV not found: {csv_path}")
+    csv_path = args.csv
+    if csv_path is not None:
+        p = Path(csv_path)
+        if str(csv_path).lower().startswith(("http://", "https://", "ftp://", "s3://")):
+            _die(f"network_access=false: remote CSV rejected: {csv_path}")
+        if not p.is_file():
+            _die(f"CSV not found: {csv_path}")
 
+    bridge = WarePhysicsBridge()
     result = bridge.evaluate(
         galaxy_id=args.galaxy or "SAMPLE_A",
         n=float(args.n),
         kappa=float(args.kappa),
         csv_path=csv_path,
-        log=not args.no_log,
+        log=False,
     )
-    print(json.dumps(result, indent=2))
-    twin = ws / "twin_state"
-    eng.save(twin)
+
+    if not args.no_log:
+        ledger = CleanRoomLedger(ws / "audit")
+        # Strip non-serializable noise; keep hashes + status
+        audit_payload = {
+            k: v
+            for k, v in result.items()
+            if k not in ("fhrr_vector",)
+        }
+        entry = ledger.append("physics_ware_sparc", audit_payload)
+        result["ledger_seq"] = entry.seq
+        result["ledger_hash"] = entry.entry_hash
+
+    print(json.dumps(result, indent=2, default=str))
 
     status = result.get("status")
     if status == "PASS":
         return 0
     if status == "INCONCLUSIVE":
         return 3
-    return 2  # FAIL
+    return 2
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -556,50 +568,27 @@ def build_parser() -> argparse.ArgumentParser:
     ds.add_argument("--port", type=int, default=8765)
     ds.set_defaults(func=cmd_dashboard_start)
 
-    # --- JKillnHide ---
-    s = sub.add_parser(
-        "jkillnhide",
-        help="workspace integrity watchdog (offline)",
-    )
+    s = sub.add_parser("jkillnhide", help="workspace integrity watchdog (offline)")
     jk = s.add_subparsers(dest="jkill_cmd", required=True)
-
     jb = jk.add_parser("baseline", help="write integrity baseline snapshot")
-    jb.add_argument(
-        "--allow-drift",
-        action="store_true",
-        help="(unused on baseline; reserved for policy consistency)",
-    )
+    jb.add_argument("--allow-drift", action="store_true")
     jb.set_defaults(func=cmd_jkillnhide)
-
     jc = jk.add_parser("check", help="scan vs baseline (exit 2 on DRIFT)")
     jc.add_argument("--allow-drift", action="store_true")
-    jc.add_argument("--no-log", action="store_true", help="skip ledger append")
+    jc.add_argument("--no-log", action="store_true")
     jc.set_defaults(func=cmd_jkillnhide)
-
     je = jk.add_parser("enforce", help="policy decision CONTINUE/FREEZE")
-    je.add_argument(
-        "--allow-drift",
-        action="store_true",
-        help="do not fail-closed on DRIFT",
-    )
+    je.add_argument("--allow-drift", action="store_true")
     je.set_defaults(func=cmd_jkillnhide)
 
-    # --- Physics / Ware-SPARC ---
-    s = sub.add_parser(
-        "physics",
-        help="Ware/SPARC phenomenological bridge (offline)",
-    )
+    s = sub.add_parser("physics", help="Ware/SPARC phenomenological bridge (offline)")
     ph = s.add_subparsers(dest="physics_cmd", required=True)
     pe = ph.add_parser("eval", help="evaluate sample or local CSV curve")
-    pe.add_argument(
-        "--galaxy",
-        default="SAMPLE_A",
-        help="bundled sample id (SAMPLE_A|SAMPLE_B)",
-    )
-    pe.add_argument("--csv", default=None, help="local SPARC-style CSV path")
-    pe.add_argument("--n", type=float, default=3.0, help="recursion depth n")
-    pe.add_argument("--kappa", type=float, default=25.0, help="phenomenological kappa")
-    pe.add_argument("--no-log", action="store_true", help="skip ledger append")
+    pe.add_argument("--galaxy", default="SAMPLE_A")
+    pe.add_argument("--csv", default=None, help="local SPARC-style CSV only")
+    pe.add_argument("--n", type=float, default=3.0)
+    pe.add_argument("--kappa", type=float, default=25.0)
+    pe.add_argument("--no-log", action="store_true", help="skip CLI-side ledger append")
     pe.set_defaults(func=cmd_physics)
 
     return p
