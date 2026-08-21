@@ -6,6 +6,7 @@ Coordinates:
   CleanRoomOrchestrator  → multi-skill execution
   CleanRoomLedger        → hash-chained audit
   CheckpointStore        → crash-safe resume
+  EpisodicMemoryStore    → long-term FHRR recall (optional)
 
 On startup:
   1) verify ledger chain
@@ -19,7 +20,6 @@ by the gate before execution.
 from __future__ import annotations
 
 import time
-import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Union
@@ -31,6 +31,7 @@ from clean_room_ledger import (
     CheckpointStore,
     PipelineCheckpoint,
 )
+from clean_room_memory import EpisodicMemoryStore
 
 
 Handler = Callable[..., Dict[str, Any]]
@@ -44,6 +45,8 @@ class SovereignTask:
     steps: List[PipelineStep]
     initial_state: Dict[str, Any] = field(default_factory=dict)
     description: str = ""
+    remember_on_pass: bool = True
+    """If True, append a short episodic memory after successful completion."""
 
 
 @dataclass
@@ -57,6 +60,7 @@ class DaemonRunReport:
     error: Optional[str]
     ledger_tip: str
     checkpoint_path: Optional[str] = None
+    memory_episode_id: Optional[str] = None
 
 
 class CleanRoomDaemon:
@@ -64,9 +68,10 @@ class CleanRoomDaemon:
     Local autonomous agent loop.
 
     workspace/
-      audit/     → CleanRoomLedger
+      audit/       → CleanRoomLedger
       checkpoints/
-      twin_state/  (optional engine persistence)
+      twin_state/  → optional engine persistence
+      memory/      → EpisodicMemoryStore
     """
 
     def __init__(
@@ -76,12 +81,15 @@ class CleanRoomDaemon:
         engine: Optional[CleanRoomVSAEngine] = None,
         require_skill_signature: bool = True,
         persist_engine: bool = True,
+        enable_memory: bool = True,
+        memory_tau: float = 0.92,
     ):
         self.workspace = Path(workspace)
         self.workspace.mkdir(parents=True, exist_ok=True)
         self.audit_dir = self.workspace / "audit"
         self.ckpt_dir = self.workspace / "checkpoints"
         self.twin_dir = self.workspace / "twin_state"
+        self.memory_dir = self.workspace / "memory"
 
         self.ledger = CleanRoomLedger(self.audit_dir)
         self.checkpoints = CheckpointStore(self.ckpt_dir)
@@ -103,6 +111,14 @@ class CleanRoomDaemon:
         )
         self.persist_engine = persist_engine
         self.require_skill_signature = require_skill_signature
+
+        self.memory: Optional[EpisodicMemoryStore] = None
+        if enable_memory:
+            self.memory = EpisodicMemoryStore(
+                self.memory_dir,
+                engine=self.engine,
+                tau=memory_tau,
+            )
 
     def verify_audit_integrity(self) -> Dict[str, Any]:
         return self.ledger.verify_chain()
@@ -142,6 +158,51 @@ class CleanRoomDaemon:
         )
         return self.checkpoints.save(ckpt)
 
+    def _inject_memory_context(self, state: Dict[str, Any]) -> None:
+        """Expose memory API handle + optional recall of task note into state."""
+        if self.memory is None:
+            return
+        state["_memory_stats"] = self.memory.stats()
+        note = None
+        inputs = state.get("inputs") if isinstance(state.get("inputs"), dict) else {}
+        note = state.get("note") or (inputs or {}).get("note")
+        if isinstance(note, str) and note.strip():
+            hits = self.memory.recall(note.strip(), top_k=3)
+            state["memory_hits"] = [
+                {
+                    "episode_id": h.episode_id,
+                    "similarity": h.similarity,
+                    "meta": h.meta,
+                }
+                for h in hits
+            ]
+
+    def _remember_task(
+        self,
+        task: SovereignTask,
+        result: PipelineResult,
+    ) -> Optional[str]:
+        if self.memory is None or not task.remember_on_pass:
+            return None
+        if result.status != "PASS":
+            return None
+        summary = (
+            f"task={task.task_id}|desc={task.description}|"
+            f"telemetry={result.state.get('telemetry', {})}"
+        )
+        eid = self.memory.remember(
+            summary,
+            meta={
+                "task_id": task.task_id,
+                "status": result.status,
+            },
+        )
+        self.ledger.append(
+            "memory_append",
+            {"task_id": task.task_id, "episode_id": eid},
+        )
+        return eid
+
     def run_task(
         self,
         task: SovereignTask,
@@ -150,10 +211,8 @@ class CleanRoomDaemon:
         """
         Execute or resume a sovereign task offline.
 
-        Crash recovery:
-          - verify ledger
-          - if checkpoint exists and resume=True, continue from next_index
-          - re-run only remaining PipelineSteps
+        Skills may read state['memory_hits'] for historical context and the
+        daemon may append episodic memory on PASS.
         """
         chain = self.verify_audit_integrity()
         if not chain["ok"] and chain["entries"] > 0:
@@ -184,7 +243,6 @@ class CleanRoomDaemon:
                 if ckpt.status in ("RUNNING", "FAIL", "ABORTED") and ckpt.next_index < len(
                     task.steps
                 ):
-                    # Resume only from RUNNING with remaining work; FAIL may be retried by caller
                     if ckpt.status == "RUNNING" or (
                         ckpt.status == "FAIL" and ckpt.next_index > 0
                     ):
@@ -193,7 +251,6 @@ class CleanRoomDaemon:
                         completed = list(ckpt.completed_steps or [])
                         resumed = True
             except ValueError as e:
-                # Corrupt checkpoint — refuse silent continue
                 self.ledger.append(
                     "checkpoint_reject",
                     {"pipeline_id": pipeline_id, "error": str(e)},
@@ -213,6 +270,8 @@ class CleanRoomDaemon:
                 ledger_tip=self.ledger.tip_hash,
             )
 
+        self._inject_memory_context(state)
+
         if not resumed:
             self.ledger.record_pipeline_start(
                 pipeline_id,
@@ -221,7 +280,6 @@ class CleanRoomDaemon:
             )
             self._save_checkpoint(pipeline_id, 0, "RUNNING", state, completed)
 
-        # Mark running
         self.ledger.append(
             "daemon_cycle",
             {
@@ -229,12 +287,12 @@ class CleanRoomDaemon:
                 "resumed": resumed,
                 "start_index": start_index,
                 "remaining": len(remaining),
+                "memory_hits": len(state.get("memory_hits") or []),
             },
         )
 
         result: PipelineResult = self.orchestrator.run(remaining, initial_state=state)
 
-        # Map orchestrator step indices to absolute pipeline indices
         abs_steps: List[Dict[str, Any]] = []
         for rec in result.steps:
             abs_rec = dict(rec)
@@ -258,8 +316,10 @@ class CleanRoomDaemon:
 
         completed.extend(abs_steps)
         merged_state = result.state
+        mem_id: Optional[str] = None
 
         if result.status == "PASS":
+            mem_id = self._remember_task(task, result)
             self.ledger.record_pipeline_end(pipeline_id, "PASS")
             path = self._save_checkpoint(
                 pipeline_id, len(task.steps), "PASS", merged_state, completed
@@ -275,9 +335,9 @@ class CleanRoomDaemon:
                 error=None,
                 ledger_tip=self.ledger.tip_hash,
                 checkpoint_path=str(path),
+                memory_episode_id=mem_id,
             )
 
-        # FAIL — checkpoint for diagnosis / optional retry from aborted_at
         abs_abort = (
             start_index + result.aborted_at
             if result.aborted_at is not None
@@ -288,7 +348,7 @@ class CleanRoomDaemon:
         )
         path = self._save_checkpoint(
             pipeline_id,
-            abs_abort,  # resume point = failed step (caller may fix and retry)
+            abs_abort,
             "FAIL",
             merged_state,
             completed,
@@ -304,6 +364,7 @@ class CleanRoomDaemon:
             error=result.error,
             ledger_tip=self.ledger.tip_hash,
             checkpoint_path=str(path),
+            memory_episode_id=None,
         )
 
     def run_forever(
@@ -312,12 +373,6 @@ class CleanRoomDaemon:
         idle_sleep_s: float = 0.0,
         max_cycles: Optional[int] = 1,
     ) -> List[DaemonRunReport]:
-        """
-        Autonomous loop over a task list (offline).
-
-        max_cycles=1 → single pass (safe default for tests).
-        idle_sleep_s > 0 only sleeps locally — no network.
-        """
         reports: List[DaemonRunReport] = []
         cycles = 0
         while max_cycles is None or cycles < max_cycles:
