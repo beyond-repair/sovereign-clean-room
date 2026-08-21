@@ -17,7 +17,6 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-# Ensure core/ is importable when invoked as script
 _CORE = Path(__file__).resolve().parent
 if str(_CORE) not in sys.path:
     sys.path.insert(0, str(_CORE))
@@ -33,8 +32,11 @@ def _ok(msg: str) -> None:
 
 
 def _workspace(path: Optional[str]) -> Path:
-    p = Path(path or "./sovereign_workspace").resolve()
-    return p
+    return Path(path or "./sovereign_workspace").resolve()
+
+
+def _read_key_hex(path: Path) -> str:
+    return path.read_text(encoding="utf-8").strip().split()[0]
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -71,7 +73,6 @@ def cmd_status(args: argparse.Namespace) -> int:
     ws = _workspace(args.workspace)
     report: Dict[str, Any] = {"workspace": str(ws), "network_access": False}
 
-    # Engine
     twin = ws / "twin_state"
     eng = CleanRoomVSAEngine(dim=8192)
     if twin.is_dir():
@@ -87,16 +88,13 @@ def cmd_status(args: argparse.Namespace) -> int:
     else:
         report["engine"] = {"loaded": False, "error": "no twin_state"}
 
-    # Ledger
     audit = ws / "audit"
     if audit.is_dir():
         led = CleanRoomLedger(audit)
-        chain = led.verify_chain()
-        report["ledger"] = chain
+        report["ledger"] = led.verify_chain()
     else:
         report["ledger"] = {"ok": True, "entries": 0, "note": "no audit dir"}
 
-    # Checkpoints
     ckpt_dir = ws / "checkpoints"
     ckpts = list(ckpt_dir.glob("ckpt_*.json")) if ckpt_dir.is_dir() else []
     ckpt_ok = 0
@@ -112,12 +110,13 @@ def cmd_status(args: argparse.Namespace) -> int:
             ckpt_bad += 1
     report["checkpoints"] = {"count": len(ckpts), "valid": ckpt_ok, "invalid": ckpt_bad}
 
-    # Trust roots
     keys_dir = ws / "keys"
     vk_files = list(keys_dir.glob("*.pub")) if keys_dir.is_dir() else []
-    report["trust_roots"] = {"verify_key_files": len(vk_files), "paths": [str(p) for p in vk_files]}
+    report["trust_roots"] = {
+        "verify_key_files": len(vk_files),
+        "paths": [str(p) for p in vk_files],
+    }
 
-    # Memory
     mem = ws / "memory" / "manifest.json"
     if mem.is_file():
         man = json.loads(mem.read_text(encoding="utf-8"))
@@ -130,7 +129,6 @@ def cmd_status(args: argparse.Namespace) -> int:
         report["memory"] = {"episodes": 0}
 
     print(json.dumps(report, indent=2))
-    # Fail-closed: invalid ledger or broken jump-start → non-zero if --strict
     if args.strict:
         eng_ok = report.get("engine", {}).get("jump_start_ok", False)
         led = report.get("ledger", {})
@@ -141,7 +139,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 
 def cmd_sign(args: argparse.Namespace) -> int:
-    from skill_crypto import load_signing_key, sign_package, generate_keypair, save_keypair
+    from skill_crypto import sign_package, generate_keypair, save_keypair
 
     ws = _workspace(args.workspace)
     pkg_path = Path(args.package)
@@ -155,14 +153,14 @@ def cmd_sign(args: argparse.Namespace) -> int:
         if args.generate_keys:
             sk, vk = generate_keypair()
             sk_path.parent.mkdir(parents=True, exist_ok=True)
-            save_keypair(sk_path.parent / "skill_ed25519", sk, vk)
-            sk_path = sk_path.parent / "skill_ed25519.sk"
+            paths = save_keypair(sk_path.parent, sk, vk, name="skill_ed25519")
+            sk_path = paths["signing_key"]
             _ok(f"generated keypair under {sk_path.parent}")
         else:
             _die(f"signing key not found: {sk_path} (use --generate-keys)")
 
-    sk = load_signing_key(sk_path)
-    signed = sign_package(package, sk)
+    sk_hex = _read_key_hex(sk_path)
+    signed = sign_package(package, sk_hex)
     out = Path(args.output) if args.output else pkg_path.with_suffix(".signed.json")
     out.write_text(json.dumps(signed, indent=2), encoding="utf-8")
     _ok(f"signed package → {out}")
@@ -223,7 +221,6 @@ def cmd_shacl_check(args: argparse.Namespace) -> int:
         _die(f"data file not found: {data_path}")
     raw = json.loads(data_path.read_text(encoding="utf-8"))
 
-    # Accept either skill package or node mapping
     if "sovereignty" in raw or "vsa_bindings" in raw:
         from clean_room_shacl import skill_package_to_graph
 
@@ -242,7 +239,6 @@ def cmd_shacl_check(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    """Run a single signed skill package with deterministic local model or noop."""
     from clean_room_vsa import CleanRoomVSAEngine, CleanRoomGate
     from clean_room_model import LocalModelBridge, DeterministicLocalBackend, skill_handler_factory
     from clean_room_orchestrator import CleanRoomOrchestrator, PipelineStep
@@ -267,9 +263,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     keys_dir = ws / "keys"
     if keys_dir.is_dir():
         for p in keys_dir.glob("*.pub"):
-            keys.append(p.read_text(encoding="utf-8").strip().split()[0])
+            keys.append(_read_key_hex(p))
     if args.verify_key:
-        keys.append(Path(args.verify_key).read_text(encoding="utf-8").strip().split()[0])
+        keys.append(_read_key_hex(Path(args.verify_key)))
 
     gate = CleanRoomGate(
         eng,
@@ -296,7 +292,12 @@ def cmd_run(args: argparse.Namespace) -> int:
         [PipelineStep(package=package, handler=handler, name="cli_run")],
         initial_state={"note": args.note or "", "task": args.task or args.note or "cli"},
     )
-    print(json.dumps({"status": result.status, "error": result.error, "steps": result.steps}, indent=2))
+    print(
+        json.dumps(
+            {"status": result.status, "error": result.error, "steps": result.steps},
+            indent=2,
+        )
+    )
     if twin.parent.exists():
         eng.save(twin)
     return 0 if result.status == "PASS" else 2
@@ -312,7 +313,7 @@ def cmd_daemon_start(args: argparse.Namespace) -> int:
     keys_dir = ws / "keys"
     if keys_dir.is_dir():
         for p in keys_dir.glob("*.pub"):
-            keys.append(p.read_text(encoding="utf-8").strip().split()[0])
+            keys.append(_read_key_hex(p))
 
     daemon = CleanRoomDaemon(
         ws,
@@ -334,14 +335,21 @@ def cmd_daemon_start(args: argparse.Namespace) -> int:
     bridge = LocalModelBridge(backend=DeterministicLocalBackend())
     handler = skill_handler_factory(bridge)
     steps = [
-        PipelineStep(package=pkg, handler=handler, name=pkg.get("manifest", {}).get("skill_id", f"s{i}"))
+        PipelineStep(
+            package=pkg,
+            handler=handler,
+            name=pkg.get("manifest", {}).get("skill_id", f"s{i}"),
+        )
         for i, pkg in enumerate(packages)
     ]
     task = SovereignTask(
         task_id=args.task_id or "cli-daemon",
         description=args.description or "cli daemon run",
         steps=steps,
-        initial_state={"task": args.task or "offline daemon cycle", "note": args.note or ""},
+        initial_state={
+            "task": args.task or "offline daemon cycle",
+            "note": args.note or "",
+        },
     )
     report = daemon.run_task(task, resume=not args.no_resume)
     print(
@@ -365,7 +373,9 @@ def build_parser() -> argparse.ArgumentParser:
         prog="clean_room_cli",
         description="Sovereign Clean-Room Control CLI (offline-only)",
     )
-    p.add_argument("--workspace", "-w", default="./sovereign_workspace", help="workspace root")
+    p.add_argument(
+        "--workspace", "-w", default="./sovereign_workspace", help="workspace root"
+    )
     sub = p.add_subparsers(dest="command", required=True)
 
     s = sub.add_parser("init", help="initialize workspace + jump-start")
