@@ -4,9 +4,9 @@ Unified Sovereign Control CLI & Command Center
 
 Offline-first workspace management for:
   VSA core, skill signing, orchestrator, ledger, checkpoints,
-  daemon, episodic memory, SHACL, local model bridge.
+  daemon, episodic memory, SHACL, local model bridge, loopback dashboard.
 
-No network sockets. network_access: false.
+No external network. network_access: false.
 """
 
 from __future__ import annotations
@@ -368,6 +368,23 @@ def cmd_daemon_start(args: argparse.Namespace) -> int:
     return 0 if report.status == "PASS" else 2
 
 
+def cmd_dashboard_start(args: argparse.Namespace) -> int:
+    from clean_room_dashboard import LoopbackDashboard, LOOPBACK
+
+    ws = _workspace(args.workspace)
+    host = args.host or LOOPBACK
+    if host not in (LOOPBACK, "localhost"):
+        _die(f"dashboard host must be loopback ({LOOPBACK}), got {host!r}")
+    port = int(args.port)
+    dash = LoopbackDashboard(ws, host=LOOPBACK, port=port)
+    try:
+        dash.start(blocking=True)
+    except KeyboardInterrupt:
+        dash.stop()
+        _ok("dashboard stopped")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="clean_room_cli",
@@ -431,6 +448,13 @@ def build_parser() -> argparse.ArgumentParser:
     st.add_argument("--allow-unsigned", action="store_true")
     st.add_argument("--no-resume", action="store_true")
     st.set_defaults(func=cmd_daemon_start)
+
+    s = sub.add_parser("dashboard", help="local loopback web dashboard")
+    dsub = s.add_subparsers(dest="dashboard_cmd", required=True)
+    ds = dsub.add_parser("start", help="serve UI on 127.0.0.1 only")
+    ds.add_argument("--host", default="127.0.0.1", help="must be 127.0.0.1 or localhost")
+    ds.add_argument("--port", type=int, default=8765)
+    ds.set_defaults(func=cmd_dashboard_start)
 
     return p
 
