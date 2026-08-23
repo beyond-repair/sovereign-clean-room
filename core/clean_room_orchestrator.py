@@ -116,8 +116,15 @@ class CleanRoomOrchestrator:
             for k, v in initial_state.items():
                 if k not in ("inputs", "last_output", "history", "telemetry"):
                     state[k] = v
+            # Resume/crash-recovery must preserve prior skill handoff
+            if "last_output" in initial_state:
+                state["last_output"] = initial_state["last_output"]
+            if "history" in initial_state and isinstance(initial_state["history"], list):
+                state["history"] = list(initial_state["history"])
             if "telemetry" in initial_state and isinstance(initial_state["telemetry"], dict):
                 state["telemetry"] = dict(initial_state["telemetry"])
+            if "inputs" in initial_state and isinstance(initial_state["inputs"], dict):
+                state["inputs"] = dict(initial_state["inputs"])
 
         results: List[Dict[str, Any]] = []
 
