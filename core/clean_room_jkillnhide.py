@@ -40,7 +40,7 @@ DEFAULT_WATCH_GLOBS = (
     "keys/*.sk",
     "skills/**/*.json",
     "workspace.json",
-    "audit/tip.json",
+    # audit/ is self-modifying (ledger appends) — never watch tip.json
     "ipc/**/*",
 )
 
