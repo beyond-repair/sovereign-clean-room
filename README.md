@@ -1,62 +1,88 @@
 <div align="center">
 
-# 🧠 SEEM
+# 🧠 SEEM · Sovereign Clean-Room
 
-## The cognitive runtime that **doesn't need the cloud**
-
-### Sovereign Clean-Room · Final Form
+### Offline cognitive substrate — the runtime you **own**
 
 [![ACTIVE](https://img.shields.io/badge/●_ACTIVE-22c55e?style=for-the-badge)](https://github.com/beyond-repair/sovereign-clean-room)
 [![v1.3](https://img.shields.io/badge/Core-v1.3-0ea5e9?style=for-the-badge)](manifests/CONSTITUTION_v1.3.md)
 [![CI](https://img.shields.io/github/actions/workflow/status/beyond-repair/sovereign-clean-room/python-tests.yml?style=for-the-badge)](https://github.com/beyond-repair/sovereign-clean-room/actions)
-[![Python](https://img.shields.io/badge/Pure_NumPy-core-3776AB?style=for-the-badge&logo=python&logoColor=white)](requirements.txt)
-
-**Stop renting intelligence. Run a substrate you can open, gate, and keep.**
 
 </div>
 
 ---
 
-## The problem
+## Why it is unique
 
-Your “AI stack” is a thin wrapper over someone else's model, someone else's policy, someone else's outage.
+| Typical stack | Clean-Room |
+|---------------|------------|
+| Cloud model + thin wrapper | **Local pure-NumPy FHRR core** |
+| Skills run with full privileges | **Ed25519 + SHACL gate before touch** |
+| Failures discarded | **BaNEL phase repulsion** |
+| Opaque memory | **Jump-Start atoms + hash ledger** |
+| “Offline” optional | **`network_access: false` enforced** |
 
-**SEEM** is built for the opposite bet:
-
-- **Offline-first** — `network_access: false` is a hard rule, not a slide  
-- **Small core** — pure NumPy FHRR, not a 40GB mystery blob  
-- **Clean-Room** — untrusted skills don't contaminate the symbolic engine  
-- **Memory that means something** — Jump-Start atoms, episodic store, crash-safe twin state  
-- **Failures that teach** — BaNEL turns errors into directional signal  
+**Canonical SEEM home.** All prior SEEM forks are superseded.
 
 ---
 
-## What you get
-
-| Layer | Punchline |
-|-------|-----------|
-| **FHRR core** | Bind · unbind · bundle · gate at τ = 0.92 |
-| **Clean-Room Gate** | Ed25519 packages · SHACL · sandbox |
-| **Orchestrator / Daemon** | Multi-skill pipelines · resume after crash |
-| **Ledger** | Append-only · hash-chained · offline |
-| **JKillnHide** | Workspace integrity — drift freezes execution |
-| **CLI** | `init` · `run` · `status` · `physics` · `jkillnhide` |
+## Visual workflow
 
 ```text
-   Untrusted skill ──► Gate ──► Core ──► Ledger / Memory
-                         ▲
-                    signature + SHACL
-                    network_access = false
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│ 1. WORKSPACE │───►│ 2. GATE      │───►│ 3. FHRR CORE │───►│ 4. MEMORY    │
+│ init / load  │    │ sign·SHACL   │    │ bind·unbind  │    │ episodic     │
+│ twin state   │    │ sandbox      │    │ BaNEL·τ=0.92 │    │ + ledger     │
+└──────────────┘    └──────────────┘    └──────────────┘    └──────┬───────┘
+                                                                   │
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐           │
+│ 7. DEFENSE   │◄───│ 6. DAEMON    │◄───│ 5. ORCHESTR. │◄──────────┘
+│ JKillnHide   │    │ resume loop  │    │ skill chain  │
+│ freeze on    │    │ checkpoints  │    │ telemetry    │
+│ drift        │    │              │    │              │
+└──────────────┘    └──────────────┘    └──────────────┘
+```
+
+### Step-by-step — how & why
+
+| Step | What happens | Why |
+|-----:|--------------|-----|
+| **1** | `cli init` creates workspace, loads Jump-Start primitives | Deterministic birth — not empty black box |
+| **2** | Skill packages verified (Ed25519) + SHACL shapes | Untrusted code never touches core raw |
+| **3** | FHRR bind/unbind, sparse cleanup, invertibility gate | Compositional memory without a 40GB weight dump |
+| **4** | Episodic store + append-only hash-chained ledger | Recall + audit without a remote DB |
+| **5** | Orchestrator runs multi-skill pipelines offline | Continuity across tasks, same core state |
+| **6** | Daemon resumes from last valid checkpoint | Crash ≠ amnesia |
+| **7** | JKillnHide compares workspace integrity | Drift can freeze execution before poison spreads |
+
+---
+
+## How it works with the rest of the lab
+
+```text
+                    ADL-Governance (rules & claim levels)
+                              │
+         ┌────────────────────┼────────────────────┐
+         ▼                    ▼                    ▼
+  sovereign-clean-room   BlockSwarm          forge-aegis
+  (offline brain)        (on-chain advice≠  (integrity
+         │                execute)            contract)
+         │                    │                    │
+         └──────── one-way attestation ────────────┘
+                          optional
+
+  Digital Double = product agents (separate surface)
+  coherence-drive = RESEARCH only (physics bridge may run
+                    offline here — does NOT raise claim level)
 ```
 
 ---
 
-## 60-second start
+## Quick start
 
 ```bash
 git clone https://github.com/beyond-repair/sovereign-clean-room.git
 cd sovereign-clean-room && pip install -r requirements.txt
-
 python core/clean_room_cli.py init -w ./sovereign_workspace
 python core/clean_room_cli.py status -w ./sovereign_workspace
 python tests/test_canonical_v13.py
@@ -64,23 +90,8 @@ python tests/test_canonical_v13.py
 
 ---
 
-## This is the final form
-
-All prior SEEM repos are **history**. This is the only active substrate.
-
-| Legacy | Status |
-|--------|--------|
-| SEEM-2.0 · Cognitive-Microservice · seem-block-system | **SUPERSEDED → here** |
-
-**Not sold as:** AGI in a box · validated vacuum propulsion · “just trust the dream phase.”  
-**Sold as:** a serious offline control plane you can run, test, and extend.
-
----
-
 <div align="center">
 
-### ⭐ If sovereignty isn't a slogan for you — star it. Clone it. Stress it.
-
-[**Atomic Dream Labs**](https://github.com/beyond-repair) · [Governance](https://github.com/beyond-repair/ADL-Governance)
+[Atomic Dream Labs](https://github.com/beyond-repair) · [ADL-Governance](https://github.com/beyond-repair/ADL-Governance)
 
 </div>
