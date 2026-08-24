@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Clean-Room VSA core — assembled from part files for CI restore."""
+"""Clean-Room VSA core — base64 assembled for CI restore."""
+import base64
 from pathlib import Path
-_code = "".join(
-    (Path(__file__).resolve().parent / f"_vsa_part_{i}.py").read_text(encoding="utf-8")
-    for i in range(10)
+_b64 = "".join(
+    (Path(__file__).resolve().parent / f"_vsa_b64_{i}.txt").read_text(encoding="ascii")
+    for i in range(5)
 )
-exec(_code, globals())
+exec(base64.b64decode(_b64).decode("utf-8"), globals())
