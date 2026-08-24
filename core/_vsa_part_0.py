@@ -4,11 +4,11 @@ Sovereign Clean-Room VSA Core + BaNEL Integration Framework
 (v1.3.3 — SHACL-aware Gate)
 
 Complete production-grade implementation featuring:
-- Single-pass unbind resonator cleanup with magnitude-aware sparsity guard
-- FHRR unit-circle hypervectors (dim=8192 default)
-- BaNEL phase-repulsion binding
-- MemSkill promote path with fast unbind
-- Offline attestation + SHACL-subset gate hooks
+- Single-pass unbind resonator loop with strict top-k cardinality
+- Hyperspherical parallel-projection phase repulsion (BaNEL)
+- Gate-level SHACL validation hooks
+- Offline-first atomic persistence
+- MemSkill promotion path
 """
 from __future__ import annotations
 
@@ -27,7 +27,6 @@ import numpy as np
 # ---------------------------------------------------------------------------
 DEFAULT_DIM = 8192
 DEFAULT_SPARSITY_K = 256
-SPARSITY_STD_THRESHOLD = 1e-6  # only project when magnitude std exceeds this
 
 
 def _unit_circle(dim: int, rng: np.random.Generator) -> np.ndarray:
@@ -42,33 +41,8 @@ def _normalize_fhrr(v: np.ndarray) -> np.ndarray:
 
 
 class CleanRoomVSAEngine:
-    """FHRR VSA engine with BaNEL phase-repulsion and safe resonator cleanup."""
+    """Core FHRR Engine (v1.3.3)."""
 
     def __init__(
         self,
-        dim: int = DEFAULT_DIM,
-        seed: int = 42,
-        sparsity_k: int = DEFAULT_SPARSITY_K,
-        enable_shacl: bool = False,
-        shacl_engine: Any = None,
-    ):
-        self.dim = int(dim)
-        self.rng = np.random.default_rng(seed)
-        self.sparsity_k = int(sparsity_k)
-        self.enable_shacl = bool(enable_shacl)
-        self._shacl = shacl_engine
-        self.codebook: Dict[str, np.ndarray] = {}
-        self.metadata: Dict[str, Dict[str, Any]] = {}
-        self._pinned: set = set()
-        self._jump_start_hash: Optional[str] = None
-
-    # ------------------------------------------------------------------
-    # Core algebra
-    # ------------------------------------------------------------------
-    def random_hv(self) -> np.ndarray:
-        return _unit_circle(self.dim, self.rng)
-
-    def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
-        return _normalize_fhrr(a * b)
-
-    def unbind(self, composite: np.ndarray, binder: np.ndarray) -> np.ndarray:
+        dim: int = 8192,
