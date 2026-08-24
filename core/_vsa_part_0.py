@@ -4,63 +4,71 @@ Sovereign Clean-Room VSA Core + BaNEL Integration Framework
 (v1.3.3 — SHACL-aware Gate)
 
 Complete production-grade implementation featuring:
-- Single-pass unbind resonator loop with strict top-k cardinality
-- Hyperspherical parallel-projection phase repulsion (BaNEL)
-- Gated invertibility checks
-- Sparse codebook pruning (utility + redundancy)
-- Jump-Start v0.1 primitive registry
-- Ed25519 skill package verification at the Clean-Room boundary
-- Optional offline SHACL-subset constitutional validation
-- Atomic disk persistence & sandboxed execution
+- Single-pass unbind resonator cleanup with magnitude-aware sparsity guard
+- FHRR unit-circle hypervectors (dim=8192 default)
+- BaNEL phase-repulsion binding
+- MemSkill promote path with fast unbind
+- Offline attestation + SHACL-subset gate hooks
 """
-
 from __future__ import annotations
-import numpy as np
-from typing import Dict, List, Tuple, Optional, Callable, Any, Set, Iterable, Union
-import time
+
+import hashlib
 import json
-import shutil
+import math
+import time
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
+
+# ---------------------------------------------------------------------------
+# Constants / defaults
+# ---------------------------------------------------------------------------
+DEFAULT_DIM = 8192
+DEFAULT_SPARSITY_K = 256
+SPARSITY_STD_THRESHOLD = 1e-6  # only project when magnitude std exceeds this
 
 
-DEFAULT_PROTECTED_ATOMS: Set[str] = {
-    "SELF",
-    "ENVIRONMENT",
-    "EPISODIC",
-    "SEMANTIC",
-    "SUCCESS",
-    "FAILURE",
-}
-
-JUMP_START_V01_ATOMS: Tuple[str, ...] = (
-    "SELF",
-    "ENVIRONMENT",
-    "EPISODIC",
-    "SEMANTIC",
-    "SUCCESS",
-    "FAILURE",
-)
+def _unit_circle(dim: int, rng: np.random.Generator) -> np.ndarray:
+    phases = rng.uniform(0, 2 * np.pi, size=dim)
+    return np.exp(1j * phases).astype(np.complex128)
 
 
-class BaNELController:
-    """Bayesian Negative Evidence Learning (BaNEL) Engine."""
+def _normalize_fhrr(v: np.ndarray) -> np.ndarray:
+    mag = np.abs(v)
+    mag = np.where(mag < 1e-12, 1.0, mag)
+    return (v / mag).astype(np.complex128)
 
-    def __init__(self, imprint_strength: float = 0.20):
-        self.imprint_strength = imprint_strength
-        self.failure_ledger: List[Dict[str, Any]] = []
 
-    def record_failure(
+class CleanRoomVSAEngine:
+    """FHRR VSA engine with BaNEL phase-repulsion and safe resonator cleanup."""
+
+    def __init__(
         self,
-        task_name: str,
-        error_msg: str,
-        context_vector: Optional[np.ndarray] = None,
-    ) -> float:
-        evidence_score = 0.85
-        self.failure_ledger.append({
-            "task": task_name,
-            "error": error_msg,
-            "evidence": evidence_score,
-            "context": context_vector,
-            "timestamp": time.time(),
-        })
-        return evidence_score
+        dim: int = DEFAULT_DIM,
+        seed: int = 42,
+        sparsity_k: int = DEFAULT_SPARSITY_K,
+        enable_shacl: bool = False,
+        shacl_engine: Any = None,
+    ):
+        self.dim = int(dim)
+        self.rng = np.random.default_rng(seed)
+        self.sparsity_k = int(sparsity_k)
+        self.enable_shacl = bool(enable_shacl)
+        self._shacl = shacl_engine
+        self.codebook: Dict[str, np.ndarray] = {}
+        self.metadata: Dict[str, Dict[str, Any]] = {}
+        self._pinned: set = set()
+        self._jump_start_hash: Optional[str] = None
+
+    # ------------------------------------------------------------------
+    # Core algebra
+    # ------------------------------------------------------------------
+    def random_hv(self) -> np.ndarray:
+        return _unit_circle(self.dim, self.rng)
+
+    def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        return _normalize_fhrr(a * b)
+
+    def unbind(self, composite: np.ndarray, binder: np.ndarray) -> np.ndarray:
