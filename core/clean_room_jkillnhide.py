@@ -194,10 +194,6 @@ class JKillnHideWatchdog:
             if name not in self.engine.codebook:
                 self.engine.register(name, pinned=True)
 
-    # ------------------------------------------------------------------
-    # Host telemetry (read-only, offline)
-    # ------------------------------------------------------------------
-
     def snapshot_file_hashes(self) -> Dict[str, str]:
         result: Dict[str, str] = {}
         for path in _expand_watches(self.workspace, self.watch_globs):
@@ -228,10 +224,6 @@ class JKillnHideWatchdog:
             if len(procs) >= limit:
                 break
         return procs
-
-    # ------------------------------------------------------------------
-    # Baseline / anomaly
-    # ------------------------------------------------------------------
 
     def write_baseline(self) -> Dict[str, str]:
         hashes = self.snapshot_file_hashes()
@@ -280,10 +272,6 @@ class JKillnHideWatchdog:
         status = "CLEAN" if not deltas else "DRIFT"
         return status, deltas
 
-    # ------------------------------------------------------------------
-    # FHRR + SHACL mapping
-    # ------------------------------------------------------------------
-
     def encode_report_vector(self, status: str, severity: str) -> np.ndarray:
         flag = {
             "CLEAN": "DEFENSE_CLEAN",
@@ -297,10 +285,13 @@ class JKillnHideWatchdog:
         return self.engine.bind(role, filler)
 
     def register_defense_atom(self, status: str, severity: str) -> str:
-        vec = self.encode_report_vector(status, severity)
-        name = f"DEFENSE_EVENT::{int(time.time())}"
-        self.engine.register(name, vec, pinned=False)
-        return name
+        """Encode defense status in-memory only.
+
+        Do not register timestamped codebook atoms: that would mutate twin_state
+        on every check and false-trigger integrity drift against a baseline.
+        """
+        _ = self.encode_report_vector(status, severity)
+        return f"DEFENSE_EVENT::{int(time.time())}"
 
     def shacl_security_event(
         self, severity: str, anomaly: bool
@@ -319,10 +310,6 @@ class JKillnHideWatchdog:
         g.add("rep:1", "seem:network_access", False)
         return self.shapes.validate_graph(g, shape_id="IntegrityBaselineShape")
 
-    # ------------------------------------------------------------------
-    # Scan + enforce
-    # ------------------------------------------------------------------
-
     def scan(self, log: bool = True) -> DefenseReport:
         status, deltas = self.diff_integrity()
         procs = self.snapshot_processes()
@@ -334,7 +321,6 @@ class JKillnHideWatchdog:
         elif status == "MISSING_BASELINE":
             severity = "WARN"
         else:
-            # modified keys or twin_state → CRIT
             crit_paths = any(
                 d.path.startswith("keys/") or d.path.startswith("twin_state/")
                 for d in deltas
