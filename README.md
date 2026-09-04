@@ -1,18 +1,56 @@
 <div align="center">
 
-# 🧠 SEEM · Sovereign Clean-Room
+```
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║   ██████╗ ██████╗ ███╗   ███╗██████╗ ██╗██╗     ███████╗██████╗  ║
+║  ██╔════╝██╔═══██╗████╗ ████║██╔══██╗██║██║     ██╔════╝██╔══██╗ ║
+║  ██║     ██║   ██║██╔████╔██║██████╔╝██║██║     █████╗  ██████╔╝ ║
+║  ██║     ██║   ██║██║╚██╔╝██║██╔═══╝ ██║██║     ██╔══╝  ██╔══██╗ ║
+║  ╚██████╗╚██████╔╝██║ ╚═╝ ██║██║     ██║███████╗███████╗██║  ██║ ║
+║   ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝ ║
+║                                                                  ║
+║              ＨＥＩＧＨＴＳ  ·  ＤＩＳＴＲＩＣＴ  ０３               ║
+╚══════════════════════════════════════════════════════════════════╝
+```
+
+# SOVEREIGN CLEAN-ROOM
 
 ### Offline cognitive substrate — the runtime you **own**
 
-[![ACTIVE](https://img.shields.io/badge/●_ACTIVE-22c55e?style=for-the-badge)](https://github.com/beyond-repair/sovereign-clean-room)
-[![v1.3](https://img.shields.io/badge/Core-v1.3-0ea5e9?style=for-the-badge)](manifests/CONSTITUTION_v1.3.md)
-[![CI](https://img.shields.io/github/actions/workflow/status/beyond-repair/sovereign-clean-room/python-tests.yml?style=for-the-badge)](https://github.com/beyond-repair/sovereign-clean-room/actions)
+**THE CITY WRITES ITS OWN REALITY.**  
+**YOU JUST EDIT IT.**
+
+[![ACTIVE](https://img.shields.io/badge/●_ACTIVE-a855f7?style=for-the-badge&labelColor=0f0f23)](https://github.com/beyond-repair/sovereign-clean-room)
+[![v1.3 FHRR](https://img.shields.io/badge/Core-v1.3_Hyperspherical-22d3ee?style=for-the-badge&labelColor=0f0f23)](manifests/CONSTITUTION_v1.3.md)
+[![CI](https://img.shields.io/github/actions/workflow/status/beyond-repair/sovereign-clean-room/python-tests.yml?style=for-the-badge&labelColor=0f0f23)](https://github.com/beyond-repair/sovereign-clean-room/actions)
+[![Offline](https://img.shields.io/badge/network__access-FALSE-ef4444?style=for-the-badge&labelColor=0f0f23)](#)
+
+```
+STABILITY  ████████████████████░░░░  78%
+ALERT      ░░░░░░░░░░░░░░░░░░░░░░░░  12%
+```
 
 </div>
 
 ---
 
-## Why it is unique
+## ▌ MAIN OBJECTIVE
+
+**REACH THE CORE TOWER** — Bypass the security grid.  
+Run a fully offline FHRR cognitive twin with cryptographic skill gates, append-only memory, and fail-closed integrity.
+
+| Status | Item |
+|:------:|------|
+| ☑ | Path A static engine live |
+| ☑ | CleanRoomGate + Ed25519 + SHACL |
+| ☑ | Jump-Start v0.1 pinned atoms |
+| ☑ | BaNEL failure ledger |
+| ☑ | CI green on main |
+
+---
+
+## ▌ WHY THIS SURFACE EXISTS
 
 | Typical stack | Clean-Room |
 |---------------|------------|
@@ -26,7 +64,7 @@
 
 ---
 
-## Visual workflow
+## ▌ VISUAL WORKFLOW — VERSION FORK
 
 ```text
 ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
@@ -43,7 +81,7 @@
 └──────────────┘    └──────────────┘    └──────────────┘
 ```
 
-### Step-by-step — how & why
+### Step-by-step
 
 | Step | What happens | Why |
 |-----:|--------------|-----|
@@ -57,7 +95,19 @@
 
 ---
 
-## How it works with the rest of the lab
+## ▌ TOOLS
+
+| # | Tool | Function |
+|:-:|------|----------|
+| 1 | **SCAN** | Inspect workspace integrity + codebook stats |
+| 2 | **FORK** | Create parallel twin states (version fork) |
+| 3 | **SPIKE** | Inject skill under gate (Ed25519 + SHACL) |
+| 4 | **ANCHOR** | Pin Jump-Start atoms / ledger checkpoint |
+| 5 | **ESCAPE** | Freeze on drift (JKillnHide defense) |
+
+---
+
+## ▌ HOW IT FITS THE LAB
 
 ```text
                     ADL-Governance (rules & claim levels)
@@ -72,25 +122,33 @@
                           optional
 
   Digital Double = product agents (separate surface)
-  coherence-drive = RESEARCH only (physics bridge may run
-                    offline here — does NOT raise claim level)
+  coherence-drive = RESEARCH only
 ```
 
 ---
 
-## Quick start
+## ▌ QUICK START
 
 ```bash
 git clone https://github.com/beyond-repair/sovereign-clean-room.git
 cd sovereign-clean-room && pip install -r requirements.txt
 python core/clean_room_cli.py init -w ./sovereign_workspace
 python core/clean_room_cli.py status -w ./sovereign_workspace
-python tests/test_canonical_v13.py
+python -m pytest tests/ -q
 ```
 
 ---
 
 <div align="center">
+
+```
+YOU WERE HERE BEFORE.
+VERSION 17 FAILED.
+DO NOT TRUST SABLE.
+THE CITY REMEMBERS.
+```
+
+**REWRITE · BUILD · TRANSCEND**
 
 [Atomic Dream Labs](https://github.com/beyond-repair) · [ADL-Governance](https://github.com/beyond-repair/ADL-Governance)
 
