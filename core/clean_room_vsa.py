@@ -174,6 +174,24 @@ class CleanRoomVSAEngine:
         return {"atoms": atoms, "all_pinned": all(n in self._pinned for n in atoms), "dim": self.dim, "seed": self._jump_start_seed}
     def verify_jump_start_integrity(self) -> bool:
         return all(n in self.codebook and n in self._pinned for n in JUMP_START_V01_ATOMS)
+
+    def codebook_stats(self) -> Dict[str, Any]:
+        """Summary for CLI status and dashboards."""
+        pinned = sorted(self._pinned)
+        return {
+            "size": len(self.codebook),
+            "pinned": len(pinned),
+            "pinned_names": pinned,
+            "dim": self.dim,
+            "sparsity_k": self.sparsity_k,
+            "min_invertibility": self.min_invertibility,
+            "jump_start_ok": self.verify_jump_start_integrity(),
+            "utility_top": sorted(
+                ((n, self._utility.get(n, 0.0)) for n in self.codebook),
+                key=lambda t: -t[1],
+            )[:10],
+        }
+
     def save(self, path: Union[str, Path]) -> None:
         path = Path(path); path.mkdir(parents=True, exist_ok=True)
         meta = {"dim": self.dim, "sparsity_k": self.sparsity_k, "min_invertibility": self.min_invertibility,
@@ -205,10 +223,12 @@ class CleanRoomVSAEngine:
                 self.atom_meta[name] = {"pinned": name in self._pinned}; self.metadata[name] = self.atom_meta[name]
 
 class CleanRoomGate:
-    def __init__(self, engine: CleanRoomVSAEngine, trusted_verify_keys: Optional[Sequence[str]] = None, require_skill_signature: bool = False):
+    def __init__(self, engine: CleanRoomVSAEngine, trusted_verify_keys: Optional[Sequence[str]] = None,
+                 require_skill_signature: bool = False, enable_shacl: bool = False, **_kwargs: Any):
         self.engine = engine
         self.trusted_verify_keys: List[str] = list(trusted_verify_keys or [])
         self.require_skill_signature = bool(require_skill_signature)
+        self.enable_shacl = bool(enable_shacl)
     def add_trusted_verify_key(self, key_hex: str) -> None:
         if key_hex and key_hex not in self.trusted_verify_keys: self.trusted_verify_keys.append(key_hex)
     def execute_skill_package(self, package: Dict[str, Any], handler: Callable[..., Any], *args: Any, **kwargs: Any) -> Dict[str, Any]:
