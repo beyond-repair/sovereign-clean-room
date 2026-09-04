@@ -226,6 +226,7 @@ class CleanRoomGate:
     def __init__(self, engine: CleanRoomVSAEngine, trusted_verify_keys: Optional[Sequence[str]] = None,
                  require_skill_signature: bool = False, enable_shacl: bool = False, **_kwargs: Any):
         self.engine = engine
+        self.vsa = engine  # alias used by skill handlers / episodic_bind
         self.trusted_verify_keys: List[str] = list(trusted_verify_keys or [])
         self.require_skill_signature = bool(require_skill_signature)
         self.enable_shacl = bool(enable_shacl)
