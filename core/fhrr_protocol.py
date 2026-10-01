@@ -135,6 +135,52 @@ def resonator(
     return estimates, used, converged, faults
 
 
+def resonator_codebook_superposition(
+    projected: np.ndarray,
+    codebook: np.ndarray,
+    k: int,
+    t_max: int = T_MAX,
+    codebook_conj: Optional[np.ndarray] = None,
+) -> tuple[list, int, bool, int]:
+    """Sequential soft cleanup with a uniform codebook-superposition init.
+
+    Protocol v1.0 section 1 locks M and T_max. It does not name the initial
+    distribution. Each factor starts as phasor_project of the sum of the
+    codebook rows (one shared vector, not the true factors). The cleanup is
+    the same map as resonator(): xhat <- pi(A Aᴴ p). All t_max passes run;
+    a repeated argmax tuple does not return early. iterations is t_max.
+    converged is whether the argmax tuple was unchanged on the last pass.
+    """
+    if codebook_conj is None:
+        codebook_conj = codebook.conj()
+    summed = codebook.sum(axis=0)
+    base, init_faults = phasor_project(summed)
+    if init_faults:
+        return [base.copy() for _ in range(k)], t_max, False, int(init_faults)
+    estimates = [base.copy() for _ in range(k)]
+    faults = 0
+    prev = None
+    winners = None
+    prev_winners = None
+    for _t in range(1, t_max + 1):
+        for i in range(k):
+            decoded = projected.copy()
+            for j in range(k):
+                if j == i:
+                    continue
+                decoded = decoded * np.conjugate(estimates[j])
+            cleaned, step_faults = _codebook_cleanup(codebook, decoded, codebook_conj)
+            faults += step_faults
+            if step_faults:
+                continue
+            estimates[i] = cleaned
+        winners = tuple(_argmax_index(codebook, estimates[i]) for i in range(k))
+        prev_winners = prev
+        prev = winners
+    converged = prev_winners is not None and winners == prev_winners
+    return estimates, int(t_max), bool(converged), faults
+
+
 def run_trial(
     codebook: np.ndarray,
     k: int,
@@ -143,6 +189,7 @@ def run_trial(
     rng: np.random.Generator,
     t_max: int = T_MAX,
     codebook_conj: Optional[np.ndarray] = None,
+    variant: Optional[str] = None,
 ) -> Dict[str, Any]:
     m, d = codebook.shape
     true_idx = rng.choice(m, size=k, replace=False).astype(np.int64)
@@ -165,9 +212,17 @@ def run_trial(
             "iterations": None,
             "converged": False,
         }
-    estimates, used, converged, res_faults = resonator(
-        projected, codebook, k, rng, t_max=t_max, codebook_conj=codebook_conj
-    )
+    if variant is None:
+        estimates, used, converged, res_faults = resonator(
+            projected, codebook, k, rng, t_max=t_max, codebook_conj=codebook_conj
+        )
+    elif variant == "codebook_superposition":
+        # rng is intentionally unused: init is the codebook sum, not a draw.
+        estimates, used, converged, res_faults = resonator_codebook_superposition(
+            projected, codebook, k, t_max=t_max, codebook_conj=codebook_conj
+        )
+    else:
+        raise ValueError(f"unknown resonator variant: {variant}")
     if res_faults:
         return {
             "projection_faults": int(faults + res_faults),
@@ -212,6 +267,7 @@ def _fork_trial(child: Any) -> Dict[str, Any]:
         rng,
         t_max=int(_FORK["t_max"]),
         codebook_conj=_FORK["codebook_conj"],
+        variant=_FORK.get("variant"),
     )
 
 
@@ -238,18 +294,29 @@ def _cell_from_rows(
         and requested == 10000
         and int(config["m"]) == 1000
         and int(config["d"]) in (8192, 16384)
+        and "resonator_variant" not in config
     )
     status = "measured" if full else "partial"
+    if config.get("resonator_variant"):
+        notes = (
+            "Variant resonator_variant="
+            + str(config["resonator_variant"])
+            + ". Not a locked-grid cell. Protocol v1.0 section 1 locks M=1000 and "
+            "T_max=7 and does not lock the initial distribution. Floors are not "
+            "claimed by this status."
+        )
+    else:
+        notes = (
+            "prefix of the locked grid; N or M or d is not the full protocol cell"
+            if status == "partial"
+            else "full protocol cell"
+        )
     return _envelope(
         config,
         digest,
         git_sha,
         status=status,
-        notes=(
-            "prefix of the locked grid; N or M or d is not the full protocol cell"
-            if status == "partial"
-            else "full protocol cell"
-        ),
+        notes=notes,
         trials_completed=len(rows),
         mean_I=None if mean_pack is None else mean_pack[0],
         mean_I_ci95=None if mean_pack is None else [mean_pack[1], mean_pack[2]],
@@ -280,6 +347,7 @@ def run_cell(
     batch_size: int = 0,
     on_batch: Optional[Any] = None,
     prior_rows: Optional[List[Dict[str, Any]]] = None,
+    variant: Optional[str] = None,
 ) -> Dict[str, Any]:
     config = {
         "protocol": PROTOCOL,
@@ -300,6 +368,8 @@ def run_cell(
         "phase_interval": "(-pi, pi]",
         "resonator_init": "random_unit_phasors_sequential_soft_cleanup",
     }
+    if variant is not None:
+        config["resonator_variant"] = str(variant)
     digest = config_sha256(config)
     if n_trials <= 0:
         return _envelope(
@@ -347,7 +417,8 @@ def run_cell(
             for child in pending:
                 rng = np.random.default_rng(child)
                 yield run_trial(
-                    codebook, k, gamma, n_noise, rng, t_max=t_max, codebook_conj=codebook_conj
+                    codebook, k, gamma, n_noise, rng, t_max=t_max, codebook_conj=codebook_conj,
+                    variant=variant,
                 )
         consume(serial())
     else:
@@ -361,6 +432,7 @@ def run_cell(
                 "gamma": float(gamma),
                 "n_noise": int(n_noise),
                 "t_max": int(t_max),
+                "variant": variant,
             }
         )
         ctx = mp.get_context("fork")

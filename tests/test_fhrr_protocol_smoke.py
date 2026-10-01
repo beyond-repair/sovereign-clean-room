@@ -72,3 +72,44 @@ def test_parallel_workers_match_serial_prefix():
     resumed = run_cell(**kwargs, workers=2, prior_rows=list(serial["trials"][:2]))
     assert resumed["trials"] == serial["trials"]
     assert resumed["status"] == "partial"
+
+
+def test_locked_runner_trials_stay_bit_identical_without_variant():
+    cell = run_cell(
+        d=32, k=2, gamma=0.0, n_trials=2, codebook_seed=4, trial_seed=8,
+        m=6, bootstrap_resamples=30, git_sha="smoke",
+    )
+    assert cell["seed_record"]["config_sha256"] == (
+        "bcf87c53eef84d8384944ba651e4ef9c36c28582996558ce6c252e3540dce387"
+    )
+    assert "resonator_variant" not in cell["configuration"]
+    assert cell["trials"][0]["I"] == -0.35418412185270204
+    assert cell["trials"][0]["iterations"] == 3
+    assert cell["trials"][1]["I"] == 0.1373674069131221
+    assert cell["trials"][1]["iterations"] == 4
+    assert cell["trials"][1]["retrieval_hit"] is True
+
+
+def test_superposition_variant_is_not_a_locked_cell_and_uses_full_tmax():
+    cell = run_cell(
+        d=32, k=2, gamma=0.0, n_trials=2, codebook_seed=4, trial_seed=8,
+        m=6, bootstrap_resamples=30, git_sha="smoke",
+        variant="codebook_superposition",
+    )
+    again = run_cell(
+        d=32, k=2, gamma=0.0, n_trials=2, codebook_seed=4, trial_seed=8,
+        m=6, bootstrap_resamples=30, git_sha="smoke",
+        variant="codebook_superposition", workers=2,
+    )
+    assert cell["status"] == "partial"
+    assert cell["configuration"]["resonator_variant"] == "codebook_superposition"
+    assert cell["configuration"]["m"] == 6
+    assert cell["configuration"]["t_max"] == 7
+    assert "Not a locked-grid cell" in cell["notes"]
+    assert cell["seed_record"]["config_sha256"] != (
+        "bcf87c53eef84d8384944ba651e4ef9c36c28582996558ce6c252e3540dce387"
+    )
+    assert cell["trials"] == again["trials"]
+    for row in cell["trials"]:
+        assert row["excluded"] is False
+        assert row["iterations"] == 7
