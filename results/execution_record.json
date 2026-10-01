@@ -1,0 +1,1245 @@
+{
+  "claim_classes": {
+    "hypothesis": [
+      "H1.1",
+      "H1.2",
+      "H3.1",
+      "H3.2"
+    ],
+    "implementation_guarantee": [
+      "cosine-sum invertibility",
+      "phasor projection with zero-magnitude fault",
+      "canonical IR multiset check",
+      "GATE_3_CRYPTO_UNAVAILABLE without a signer",
+      "Z3 SAT is encoding satisfiability",
+      "network_access remains false and attempt_connection does not open a socket"
+    ],
+    "measured_result": [
+      "phase_I.executed",
+      "phase_III.groups",
+      "performance_ms"
+    ],
+    "research_interpretation": [
+      "No hypothesis is established. k_max and R_d stay null unless both CI floors are met on a completed cell. Consciousness, sentience, and general intelligence are not claims of this run."
+    ]
+  },
+  "correspondence_examples": {
+    "claim_class": "implementation_guarantee",
+    "conservative_rejection": {
+      "interpretation": "conservative_rejection",
+      "runtime": "SAFE",
+      "z3": "UNSAFE"
+    },
+    "true_positive": {
+      "interpretation": "true_positive",
+      "runtime": "SAFE",
+      "z3": "SAFE"
+    }
+  },
+  "final_status_inputs": {
+    "full_kmax_N10000_both_widths": false,
+    "reason": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session."
+  },
+  "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+  "host": {
+    "python": "3.13.5",
+    "system": "Linux-6.12.94+-x86_64-with-glibc2.41"
+  },
+  "performance_ms": {
+    "banel_step_ms": 0.02211499986515264,
+    "canonicalize_ms": 0.004378999847176601,
+    "ed25519_sign_verify_ms": 0.12250800000401796,
+    "import_cli_ms": 3.102800000078787,
+    "invertibility_d256_ms": 0.01085000008060888,
+    "ledger_append_ms": 0.1154589999714517,
+    "ledger_verify_ms": 0.14917699991201516,
+    "micro_dream_ms": 0.0023069999315339373,
+    "z3_sat_ms": 2.43804599995201
+  },
+  "phase_I": {
+    "R_d": {
+      "0.0": null,
+      "0.1": null
+    },
+    "claim_class": "measured_result",
+    "executed": [
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "configuration": {
+          "binding": "component_wise_complex_multiply",
+          "bootstrap_resamples": 10000,
+          "bootstrap_seed": 20260930,
+          "codebook_seed": 20260930,
+          "d": 8192,
+          "gamma": 0.0,
+          "invertibility": "cosine_sum",
+          "k": 2,
+          "m": 1000,
+          "n_noise": 1,
+          "n_trials": 4,
+          "phase_interval": "(-pi, pi]",
+          "projection": "phasor_project",
+          "protocol": "SEEM-VALIDATION-v1.0",
+          "resonator_init": "random_unit_phasors_sequential_soft_cleanup",
+          "t_max": 7,
+          "trial_seed": 20261001
+        },
+        "d": 8192,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 2,
+        "k_max": null,
+        "mean_I": 0.3299038379176722,
+        "mean_I_ci95": [
+          0.08757042727644915,
+          0.5722372485588954
+        ],
+        "median_T": 3.0,
+        "n_trials": 4,
+        "notes": "prefix of the locked grid; N or M or d is not the full protocol cell Requested protocol N=10000 was not run. Trials completed=4.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": 0.75,
+        "retrieval_accuracy_ci95": [
+          0.19412044968324343,
+          0.9936905367902902
+        ],
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "94d647b2efac6804953cf8a436d55474d28daecc33933bfdf5173d804168c7a0",
+          "trial_seed": 20261001
+        },
+        "status": "partial",
+        "trials": [
+          {
+            "I": 0.16184855077548288,
+            "converged": true,
+            "excluded": false,
+            "iterations": 3,
+            "projection_faults": 0,
+            "retrieval_hit": true
+          },
+          {
+            "I": 0.5030162368140392,
+            "converged": true,
+            "excluded": false,
+            "iterations": 3,
+            "projection_faults": 0,
+            "retrieval_hit": true
+          },
+          {
+            "I": 0.6414582603037514,
+            "converged": true,
+            "excluded": false,
+            "iterations": 3,
+            "projection_faults": 0,
+            "retrieval_hit": true
+          },
+          {
+            "I": 0.013292303777415408,
+            "converged": true,
+            "excluded": false,
+            "iterations": 7,
+            "projection_faults": 0,
+            "retrieval_hit": false
+          }
+        ],
+        "trials_completed": 4,
+        "usable_trials": 4
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "configuration": {
+          "binding": "component_wise_complex_multiply",
+          "bootstrap_resamples": 10000,
+          "bootstrap_seed": 20260930,
+          "codebook_seed": 20260930,
+          "d": 8192,
+          "gamma": 0.1,
+          "invertibility": "cosine_sum",
+          "k": 2,
+          "m": 1000,
+          "n_noise": 1,
+          "n_trials": 4,
+          "phase_interval": "(-pi, pi]",
+          "projection": "phasor_project",
+          "protocol": "SEEM-VALIDATION-v1.0",
+          "resonator_init": "random_unit_phasors_sequential_soft_cleanup",
+          "t_max": 7,
+          "trial_seed": 20261001
+        },
+        "d": 8192,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 2,
+        "k_max": null,
+        "mean_I": 0.3166902291446315,
+        "mean_I_ci95": [
+          0.0874713279407179,
+          0.5459091303485452
+        ],
+        "median_T": 3.0,
+        "n_trials": 4,
+        "notes": "prefix of the locked grid; N or M or d is not the full protocol cell Requested protocol N=10000 was not run. Trials completed=4.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": 0.75,
+        "retrieval_accuracy_ci95": [
+          0.19412044968324343,
+          0.9936905367902902
+        ],
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "fcd12383c9ef8de89efe906551364dfd7c777e3c5b2825a176c73b5c4d9d4fd0",
+          "trial_seed": 20261001
+        },
+        "status": "partial",
+        "trials": [
+          {
+            "I": 0.1622145804024502,
+            "converged": true,
+            "excluded": false,
+            "iterations": 3,
+            "projection_faults": 0,
+            "retrieval_hit": true
+          },
+          {
+            "I": 0.48547064715800015,
+            "converged": true,
+            "excluded": false,
+            "iterations": 3,
+            "projection_faults": 0,
+            "retrieval_hit": true
+          },
+          {
+            "I": 0.6063476135390902,
+            "converged": true,
+            "excluded": false,
+            "iterations": 3,
+            "projection_faults": 0,
+            "retrieval_hit": true
+          },
+          {
+            "I": 0.012728075478985574,
+            "converged": true,
+            "excluded": false,
+            "iterations": 7,
+            "projection_faults": 0,
+            "retrieval_hit": false
+          }
+        ],
+        "trials_completed": 4,
+        "usable_trials": 4
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "configuration": {
+          "binding": "component_wise_complex_multiply",
+          "bootstrap_resamples": 10000,
+          "bootstrap_seed": 20260930,
+          "codebook_seed": 20260930,
+          "d": 8192,
+          "gamma": 0.0,
+          "invertibility": "cosine_sum",
+          "k": 3,
+          "m": 1000,
+          "n_noise": 1,
+          "n_trials": 2,
+          "phase_interval": "(-pi, pi]",
+          "projection": "phasor_project",
+          "protocol": "SEEM-VALIDATION-v1.0",
+          "resonator_init": "random_unit_phasors_sequential_soft_cleanup",
+          "t_max": 7,
+          "trial_seed": 20261001
+        },
+        "d": 8192,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 3,
+        "k_max": null,
+        "mean_I": 0.024250546334238832,
+        "mean_I_ci95": [
+          0.020666484985028058,
+          0.027834607683449607
+        ],
+        "median_T": 6.0,
+        "n_trials": 2,
+        "notes": "prefix of the locked grid; N or M or d is not the full protocol cell Requested protocol N=10000 was not run. Trials completed=2.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": 0.0,
+        "retrieval_accuracy_ci95": [
+          0.0,
+          0.841886116991581
+        ],
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "02ba7dc49cfd8b03c62d6d77b6a886b9f4a7ea5b7a594242433626b7515c10b5",
+          "trial_seed": 20261001
+        },
+        "status": "partial",
+        "trials": [
+          {
+            "I": 0.027834607683449607,
+            "converged": true,
+            "excluded": false,
+            "iterations": 6,
+            "projection_faults": 0,
+            "retrieval_hit": false
+          },
+          {
+            "I": 0.020666484985028058,
+            "converged": true,
+            "excluded": false,
+            "iterations": 6,
+            "projection_faults": 0,
+            "retrieval_hit": false
+          }
+        ],
+        "trials_completed": 2,
+        "usable_trials": 2
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "configuration": {
+          "binding": "component_wise_complex_multiply",
+          "bootstrap_resamples": 10000,
+          "bootstrap_seed": 20260930,
+          "codebook_seed": 20260930,
+          "d": 16384,
+          "gamma": 0.1,
+          "invertibility": "cosine_sum",
+          "k": 2,
+          "m": 1000,
+          "n_noise": 1,
+          "n_trials": 1,
+          "phase_interval": "(-pi, pi]",
+          "projection": "phasor_project",
+          "protocol": "SEEM-VALIDATION-v1.0",
+          "resonator_init": "random_unit_phasors_sequential_soft_cleanup",
+          "t_max": 7,
+          "trial_seed": 20261001
+        },
+        "d": 16384,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 2,
+        "k_max": null,
+        "mean_I": -0.02366869718172837,
+        "mean_I_ci95": [
+          -0.02366869718172837,
+          -0.02366869718172837
+        ],
+        "median_T": 5.0,
+        "n_trials": 1,
+        "notes": "prefix of the locked grid; N or M or d is not the full protocol cell Requested protocol N=10000 was not run. Trials completed=1.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": 0.0,
+        "retrieval_accuracy_ci95": [
+          0.0,
+          0.9750000000000001
+        ],
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "024f88b3ea16416ae14bb15c78df4600b50b4e922650d89702cbd4af00a59a4e",
+          "trial_seed": 20261001
+        },
+        "status": "partial",
+        "trials": [
+          {
+            "I": -0.02366869718172837,
+            "converged": true,
+            "excluded": false,
+            "iterations": 5,
+            "projection_faults": 0,
+            "retrieval_hit": false
+          }
+        ],
+        "trials_completed": 1,
+        "usable_trials": 1
+      }
+    ],
+    "k_max": {
+      "d=16384,gamma=0.1": null,
+      "d=8192,gamma=0.0": null,
+      "d=8192,gamma=0.1": null
+    },
+    "not_run": [
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 3,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 4,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 4,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 5,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 5,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 6,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 6,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 7,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 7,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 8,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 8,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 9,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 9,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 10,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 8192,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 10,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 2,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 3,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 3,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 4,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 4,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 5,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 5,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 6,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 6,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 7,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 7,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 8,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 8,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 9,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 9,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.0,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 10,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      },
+      {
+        "R_d": null,
+        "claim_class": "measured_result",
+        "d": 16384,
+        "gamma": 0.1,
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "k": 10,
+        "k_max": null,
+        "mean_I": null,
+        "median_T": null,
+        "n_trials": 0,
+        "notes": "Full grid not run. One configuration at M=1000 costs on the order of the trials above (phase I prefix wall clock 15.2s for 11 trials). N=10000 for k=2..10 at two widths and two gamma values was not executed in this session.",
+        "phase": "I",
+        "projection_faults": 0,
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "retrieval_accuracy": null,
+        "seed_record": {
+          "codebook_seed": 20260930,
+          "config_sha256": "not_run",
+          "trial_seed": 20260930
+        },
+        "status": "not_run"
+      }
+    ],
+    "status": "partial",
+    "wall_clock_s": 15.178084967999894
+  },
+  "phase_III": {
+    "claim_class": "measured_result",
+    "delta_frr": {
+      "A_minus_C": [
+        {
+          "delta_frr": 0.0040000000000000036,
+          "n": 1
+        },
+        {
+          "delta_frr": 0.001999999999999974,
+          "n": 2
+        }
+      ],
+      "B_minus_C": [
+        {
+          "delta_frr": -0.025999999999999995,
+          "n": 1
+        },
+        {
+          "delta_frr": -0.06200000000000001,
+          "n": 2
+        }
+      ],
+      "D_minus_C": [
+        {
+          "delta_frr": -0.006000000000000005,
+          "n": 1
+        },
+        {
+          "delta_frr": -0.0040000000000000036,
+          "n": 2
+        }
+      ]
+    },
+    "groups": {
+      "A": {
+        "alpha": 1.0,
+        "frr_curve": [
+          {
+            "frr": 0.156,
+            "n": 1
+          },
+          {
+            "frr": 0.142,
+            "n": 2
+          }
+        ],
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "micro_dream_calls": 0,
+        "micro_dream_latency_ms_median": null,
+        "n_failing_routes": 80,
+        "n_routes": 100,
+        "n_selections": 500,
+        "seed": 20261001,
+        "status": "partial",
+        "wall_clock_s": 0.006185949000155233
+      },
+      "B": {
+        "alpha": 1.0,
+        "frr_curve": [
+          {
+            "frr": 0.126,
+            "n": 1
+          },
+          {
+            "frr": 0.078,
+            "n": 2
+          }
+        ],
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "micro_dream_calls": 0,
+        "micro_dream_latency_ms_median": null,
+        "n_failing_routes": 80,
+        "n_routes": 100,
+        "n_selections": 500,
+        "seed": 20261001,
+        "status": "partial",
+        "wall_clock_s": 0.008229642000060267
+      },
+      "C": {
+        "alpha": 1.0,
+        "frr_curve": [
+          {
+            "frr": 0.152,
+            "n": 1
+          },
+          {
+            "frr": 0.14,
+            "n": 2
+          }
+        ],
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "micro_dream_calls": 305,
+        "micro_dream_latency_ms_median": 0.017365999838148127,
+        "n_failing_routes": 80,
+        "n_routes": 100,
+        "n_selections": 500,
+        "seed": 20261001,
+        "status": "partial",
+        "wall_clock_s": 0.01948412299998381
+      },
+      "D": {
+        "alpha": 1.0,
+        "frr_curve": [
+          {
+            "frr": 0.146,
+            "n": 1
+          },
+          {
+            "frr": 0.136,
+            "n": 2
+          }
+        ],
+        "git_sha": "c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c",
+        "micro_dream_calls": 0,
+        "micro_dream_latency_ms_median": null,
+        "n_failing_routes": 80,
+        "n_routes": 100,
+        "n_selections": 500,
+        "seed": 20261001,
+        "status": "partial",
+        "wall_clock_s": 0.021661550999851897
+      }
+    },
+    "reason": "Single seed, 500 selections, 100 routes, 80 failing. Not the unevaluated locked-protocol study.",
+    "status": "partial"
+  },
+  "protocol": "SEEM-VALIDATION-v1.0"
+}

@@ -1,6 +1,7 @@
 @prefix sh:   <http://www.w3.org/ns/shacl#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 @prefix seem: <http://adl-seem.org/core/ontology#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
 # MemSkill root shape.
 # Canonical structural gate for L3 promotion.
@@ -10,7 +11,7 @@ seem:MemSkillShape
     a sh:NodeShape ;
     sh:targetClass seem:MemSkill ;
     sh:closed true ;
-    sh:ignoredProperties ( seem:comment ) ;
+    sh:ignoredProperties ( seem:comment rdf:type ) ;
 
     sh:property [
         sh:path seem:skillId ;
@@ -71,6 +72,7 @@ seem:TransitionStepShape
     a sh:NodeShape ;
     sh:targetClass seem:TransitionStep ;
     sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
 
     sh:property [
         sh:path seem:stepIndex ;

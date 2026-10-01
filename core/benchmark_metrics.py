@@ -25,9 +25,10 @@ def phasor_project(v: np.ndarray) -> tuple[np.ndarray, int]:
     """
     z = np.asarray(v, dtype=np.complex128)
     mod = np.abs(z)
-    faults = int(np.count_nonzero(mod == 0))
+    bad = (~np.isfinite(mod)) | (mod == 0)
+    faults = int(np.count_nonzero(bad))
     out = np.zeros_like(z)
-    ok = mod != 0
+    ok = ~bad
     out[ok] = z[ok] / mod[ok]
     return out, faults
 
@@ -84,3 +85,114 @@ def frr(repeated_failed_route_selections: int, total_route_selections: int) -> f
 
 def delta_frr(baseline: float, treatment: float) -> float:
     return baseline - treatment
+
+
+def retrieval_decision(
+    recovered: np.ndarray, codebook: Sequence[np.ndarray], target_index: int
+) -> dict:
+    """Argmax retrieval and the hit bit are separate fields.
+
+    The best similarity is recorded so a high score cannot be mistaken for a hit.
+    """
+    scores = [invertibility(codebook[i], recovered) for i in range(len(codebook))]
+    chosen = int(np.argmax(scores))
+    return {
+        "chosen_index": chosen,
+        "retrieval_hit": chosen == target_index,
+        "best_I": float(scores[chosen]),
+        "target_I": float(scores[target_index]),
+    }
+
+
+def _log_binom_pmf(k: int, n: int, p: float) -> float:
+    if p <= 0.0 or p >= 1.0:
+        raise ValueError("p must be in (0, 1)")
+    return (
+        math.lgamma(n + 1)
+        - math.lgamma(k + 1)
+        - math.lgamma(n - k + 1)
+        + k * math.log(p)
+        + (n - k) * math.log(1.0 - p)
+    )
+
+
+def _logsumexp(terms: list[float]) -> float:
+    if not terms:
+        return float("-inf")
+    top = max(terms)
+    return top + math.log(sum(math.exp(t - top) for t in terms))
+
+
+def binomial_cdf(k: int, n: int, p: float) -> float:
+    if k < 0:
+        return 0.0
+    if k >= n:
+        return 1.0
+    terms = [_log_binom_pmf(i, n, p) for i in range(k + 1)]
+    return math.exp(_logsumexp(terms))
+
+
+def binomial_sf(k: int, n: int, p: float) -> float:
+    """P(X >= k)."""
+    if k <= 0:
+        return 1.0
+    if k > n:
+        return 0.0
+    terms = [_log_binom_pmf(i, n, p) for i in range(k, n + 1)]
+    return math.exp(_logsumexp(terms))
+
+
+def clopper_pearson(successes: int, n: int, alpha: float = 0.05) -> tuple[float, float] | None:
+    """Exact Clopper-Pearson interval via binomial tail inversion.
+
+    lower solves P(X >= successes) = alpha/2.
+    upper solves P(X <= successes) = alpha/2.
+    """
+    if n < 0 or successes < 0 or successes > n:
+        raise ValueError("invalid binomial counts")
+    if n == 0:
+        return None
+    tail = alpha / 2.0
+    if successes == 0:
+        lower = 0.0
+    else:
+        lo, hi = 0.0, 1.0
+        for _ in range(80):
+            mid = 0.5 * (lo + hi)
+            if binomial_sf(successes, n, mid) > tail:
+                hi = mid
+            else:
+                lo = mid
+        lower = 0.5 * (lo + hi)
+    if successes == n:
+        upper = 1.0
+    else:
+        lo, hi = 0.0, 1.0
+        for _ in range(80):
+            mid = 0.5 * (lo + hi)
+            # CDF decreases in p. A CDF above the tail means p is still too small.
+            if mid <= 0.0 or mid >= 1.0:
+                break
+            if binomial_cdf(successes, n, mid) > tail:
+                lo = mid
+            else:
+                hi = mid
+        upper = 0.5 * (lo + hi)
+    return float(lower), float(upper)
+
+
+def bootstrap_mean_ci(
+    values: Sequence[float],
+    seed: int,
+    resamples: int = 10000,
+) -> tuple[float, float, float] | None:
+    """Percentile bootstrap of the mean. None when values is empty."""
+    sample = np.asarray(list(values), dtype=np.float64)
+    if sample.size == 0:
+        return None
+    rng = np.random.default_rng(seed)
+    draws = rng.integers(0, sample.size, size=(resamples, sample.size))
+    means = sample[draws].mean(axis=1)
+    low, high = np.quantile(means, [0.025, 0.975])
+    return float(sample.mean()), float(low), float(high)
+

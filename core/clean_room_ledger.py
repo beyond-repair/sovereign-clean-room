@@ -180,6 +180,69 @@ class CleanRoomLedger:
 
         return {"ok": True, "entries": count, "tip_hash": last_hash, "error": None}
 
+    def forensic_reconstruction(self) -> List[Dict[str, Any]]:
+        """What happened, why, evidence, skill, constraints, failure, change.
+
+        Missing payload fields stay None. This does not invent a narrative.
+        """
+        rows: List[Dict[str, Any]] = []
+        for entry in self.iter_entries():
+            payload = entry.payload
+            rows.append(
+                {
+                    "seq": entry.seq,
+                    "event_type": entry.event_type,
+                    "what": payload.get("what", entry.event_type),
+                    "why": payload.get("why", payload.get("error")),
+                    "evidence": payload.get("evidence"),
+                    "skill_selected": payload.get("skill_id"),
+                    "constraints": payload.get("constraints"),
+                    "failed": payload.get("failed", payload.get("gate_status") == "FAIL"),
+                    "changed": payload.get("changed"),
+                }
+            )
+        return rows
+
+    def anomaly_report(self) -> Dict[str, Any]:
+        """Classify chain faults: tamper, gap, duplicate, order, tip drift."""
+        if not self.ledger_path.is_file():
+            return {"ok": True, "anomalies": []}
+        raw_lines = [
+            ln for ln in self.ledger_path.read_text(encoding="utf-8").splitlines() if ln.strip()
+        ]
+        anomalies: List[str] = []
+        seqs: List[int] = []
+        prev = GENESIS_HASH
+        for line in raw_lines:
+            try:
+                body = json.loads(line)
+            except json.JSONDecodeError:
+                anomalies.append("corrupted_json")
+                continue
+            seq = body.get("seq")
+            seqs.append(int(seq) if isinstance(seq, int) else -1)
+            if body.get("prev_hash") != prev:
+                anomalies.append(f"out_of_order_or_missing_link seq={seq}")
+            expected = entry_hash(str(body.get("prev_hash", "")), body)
+            if body.get("entry_hash") != expected:
+                anomalies.append(f"tamper_or_corruption seq={seq}")
+            prev = str(body.get("entry_hash", ""))
+        seen = set()
+        for seq in seqs:
+            if seq in seen:
+                anomalies.append(f"duplicate seq={seq}")
+            seen.add(seq)
+        positive = [s for s in seqs if s > 0]
+        if positive and positive != list(range(1, len(positive) + 1)):
+            if any(a.startswith("duplicate") for a in anomalies) or positive != sorted(positive):
+                anomalies.append("ordering")
+            else:
+                anomalies.append("missing_or_gap")
+        chain = self.verify_chain()
+        if not chain["ok"] and not anomalies:
+            anomalies.append(chain["error"] or "chain_failed")
+        return {"ok": not anomalies and chain["ok"], "anomalies": anomalies, "chain": chain}
+
     # ------------------------------------------------------------------
     # Orchestrator-facing helpers
     # ------------------------------------------------------------------

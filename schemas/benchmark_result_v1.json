@@ -4,61 +4,163 @@
   "title": "SEEM benchmark result v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["protocol", "status", "claim_class", "git_sha", "seed_record"],
+  "required": [
+    "protocol",
+    "status",
+    "claim_class",
+    "git_sha",
+    "seed_record"
+  ],
   "properties": {
-    "protocol": {"const": "SEEM-VALIDATION-v1.0"},
-    "status": {"enum": ["not_run", "measured", "failed_integrity"]},
-    "claim_class": {"const": "measured_result"},
-    "git_sha": {"type": "string"},
+    "protocol": {
+      "const": "SEEM-VALIDATION-v1.0"
+    },
+    "status": {
+      "enum": [
+        "not_run",
+        "partial",
+        "measured",
+        "failed_integrity"
+      ]
+    },
+    "claim_class": {
+      "const": "measured_result"
+    },
+    "git_sha": {
+      "type": "string"
+    },
     "seed_record": {
       "type": "object",
-      "required": ["codebook_seed", "trial_seed", "config_sha256"],
+      "required": [
+        "codebook_seed",
+        "trial_seed",
+        "config_sha256"
+      ],
       "properties": {
-        "codebook_seed": {"type": "integer"},
-        "trial_seed": {"type": "integer"},
-        "config_sha256": {"type": "string"}
+        "codebook_seed": {
+          "type": "integer"
+        },
+        "trial_seed": {
+          "type": "integer"
+        },
+        "config_sha256": {
+          "type": "string"
+        }
       }
     },
-    "phase": {"enum": ["0", "I", "II", "III", "correspondence"]},
-    "d": {"type": "integer"},
-    "k": {"type": "integer"},
-    "gamma": {"type": "number"},
-    "n_trials": {"type": "integer"},
-    "mean_I": {"type": ["number", "null"]},
+    "phase": {
+      "enum": [
+        "0",
+        "I",
+        "II",
+        "III",
+        "correspondence"
+      ]
+    },
+    "d": {
+      "type": "integer"
+    },
+    "k": {
+      "type": "integer"
+    },
+    "gamma": {
+      "type": "number"
+    },
+    "n_trials": {
+      "type": "integer"
+    },
+    "mean_I": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
     "mean_I_ci95": {
       "type": "array",
-      "items": {"type": "number"},
+      "items": {
+        "type": "number"
+      },
       "minItems": 2,
       "maxItems": 2
     },
-    "retrieval_accuracy": {"type": ["number", "null"]},
+    "retrieval_accuracy": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
     "retrieval_accuracy_ci95": {
       "type": "array",
-      "items": {"type": "number"},
+      "items": {
+        "type": "number"
+      },
       "minItems": 2,
       "maxItems": 2
     },
-    "median_T": {"type": ["number", "null"]},
-    "projection_faults": {"type": "integer"},
-    "k_max": {"type": ["integer", "null"]},
-    "R_d": {"type": ["number", "null"]},
-    "group": {"enum": ["A", "B", "C", "D"]},
+    "median_T": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "projection_faults": {
+      "type": "integer"
+    },
+    "k_max": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "R_d": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "group": {
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    },
     "frr_curve": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["n", "frr"],
+        "required": [
+          "n",
+          "frr"
+        ],
         "properties": {
-          "n": {"type": "integer"},
-          "frr": {"type": "number"}
+          "n": {
+            "type": "integer"
+          },
+          "frr": {
+            "type": "number"
+          }
         }
       }
     },
     "correspondence": {
       "type": "object",
       "properties": {
-        "z3": {"enum": ["SAFE", "UNSAFE", "UNAVAILABLE"]},
-        "runtime": {"enum": ["SAFE", "UNSAFE", "NOT_EXECUTED"]},
+        "z3": {
+          "enum": [
+            "SAFE",
+            "UNSAFE",
+            "UNAVAILABLE"
+          ]
+        },
+        "runtime": {
+          "enum": [
+            "SAFE",
+            "UNSAFE",
+            "NOT_EXECUTED"
+          ]
+        },
         "interpretation": {
           "enum": [
             "true_positive",
@@ -70,6 +172,20 @@
         }
       }
     },
-    "notes": {"type": "string"}
+    "notes": {
+      "type": "string"
+    },
+    "trials_completed": {
+      "type": "integer"
+    },
+    "usable_trials": {
+      "type": "integer"
+    },
+    "configuration": {
+      "type": "object"
+    },
+    "trials": {
+      "type": "array"
+    }
   }
 }
