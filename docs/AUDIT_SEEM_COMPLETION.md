@@ -66,3 +66,31 @@ VSA binding is component-wise multiply followed by vector L2 normalization. The 
 H1.1, H1.2, H3.1, H3.2, any full `N=10000` cell, `k_max`, `R_d`, and any claim of mind, consciousness, sentience, or general intelligence.
 
 Measured numbers, if any, live only in `results/execution_record.json` after `scripts/run_completion_measurements.py`. Cells that were not executed have status `not_run` and null metrics.
+
+## Measured this session
+
+Code SHA `c691bb6a19b2764fc0b3f9cd85d091d3df49ad7c`. Source: `results/execution_record.json`. These are partial runs, not protocol completion.
+
+Phase I prefix, M=1000, N_noise=1, bootstrap B=10000. Wall clock 15.178s for 11 trials. `k_max` is null at every executed (d, γ). `R_d` is null.
+
+| d | k | γ | N completed | mean I | I 95% CI | accuracy | accuracy 95% CI | median T | faults | status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 8192 | 2 | 0 | 4 | 0.3299038379176722 | [0.08757042727644915, 0.5722372485588954] | 0.75 | [0.19412044968324343, 0.9936905367902902] | 3 | 0 | partial |
+| 8192 | 2 | 0.1 | 4 | 0.3166902291446315 | [0.0874713279407179, 0.5459091303485452] | 0.75 | [0.19412044968324343, 0.9936905367902902] | 3 | 0 | partial |
+| 8192 | 3 | 0 | 2 | 0.024250546334238832 | [0.020666484985028058, 0.027834607683449607] | 0.0 | [0.0, 0.841886116991581] | 6 | 0 | partial |
+| 16384 | 2 | 0.1 | 1 | -0.02366869718172837 | [-0.02366869718172837, -0.02366869718172837] | 0.0 | [0.0, 0.9750000000000001] | 5 | 0 | partial |
+
+32 other (d, k, γ) cells are `not_run`. None use N=10000.
+
+Phase III, one seed `20261001`, 100 routes, 80 failing, 500 selections. Status partial. Route-level FRR:
+
+| group | FRR(1) | FRR(2) |
+|---|---|---|
+| A | 0.156 | 0.142 |
+| B | 0.126 | 0.078 |
+| C | 0.152 | 0.14 |
+| D | 0.146 | 0.136 |
+
+ΔFRR = baseline − C is about +0.004 / +0.002 for A, −0.026 / −0.062 for B, and −0.006 / −0.004 for D. That does not establish H3.1 or H3.2. Group C FRR is not below 1%. Micro-Dream ran 305 times in group C; median latency in that run was 0.017365999838148127 ms. The separate timing loop measured median Micro-Dream at 0.0023069999315339373 ms. Both are under 100 ms in this process. Latency is not evidence of learning.
+
+No hypothesis in the locked protocol is established.
