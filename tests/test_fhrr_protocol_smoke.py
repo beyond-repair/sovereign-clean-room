@@ -59,3 +59,16 @@ def test_smoke_runner_is_deterministic_and_separates_hit_from_similarity():
 def test_identical_phasors_invertibility_one():
     codebook = sample_codebook(1, 16, 3)
     assert invertibility(codebook[0], codebook[0]) == 1.0
+
+
+def test_parallel_workers_match_serial_prefix():
+    kwargs = dict(
+        d=48, k=2, gamma=0.0, n_trials=4, codebook_seed=3, trial_seed=9,
+        m=8, bootstrap_resamples=20, git_sha="t",
+    )
+    serial = run_cell(**kwargs, workers=1)
+    parallel = run_cell(**kwargs, workers=2)
+    assert serial["trials"] == parallel["trials"]
+    resumed = run_cell(**kwargs, workers=2, prior_rows=list(serial["trials"][:2]))
+    assert resumed["trials"] == serial["trials"]
+    assert resumed["status"] == "partial"
