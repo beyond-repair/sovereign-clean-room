@@ -10,8 +10,8 @@ equation from the superseded draft. The choice is recorded in the config:
     Group D: failure events are retained but the count is added to a
              route drawn from the trial RNG, not the route that failed
 
-FRR(n) uses the locked ratio. n is the failure count of the selected
-route before that selection. The numerator counts selections whose prior
+FRR(n) uses the locked ratio. n is the environmental failure count of
+the selected route before that selection, whether or not the group stored it. The numerator counts selections whose prior
 count equals n (a repeated failed-route selection when n >= 1).
 The denominator is every selection in the session.
 
@@ -61,6 +61,7 @@ class RouteSession:
 
     def __post_init__(self) -> None:
         self.successes = [0] * self.n_routes
+        self.env_failures = [0] * self.n_routes
         self._rng = np.random.default_rng(self.seed)
         self.failing_set = set(int(x) for x in self.failing)
 
@@ -112,18 +113,13 @@ class RouteSession:
     def step(self) -> int:
         probs = self.weights()
         choice = int(self._rng.choice(self.n_routes, p=probs))
-        prior = 0
-        if self.group in ("C", "D"):
-            prior = self.structured_counts()[choice]
-        elif self.group == "A":
-            prior = 0
-        else:
-            # Group B does not store failures, so the prior failure count
-            # used by FRR is zero. Success memory is not failure evidence.
-            prior = 0
+        # FRR uses environmental failures of the selected route, including
+        # groups that do not store those failures for action selection.
+        prior = int(self.env_failures[choice])
         self.selections.append(choice)
-        self.prior_fail_counts.append(int(prior))
+        self.prior_fail_counts.append(prior)
         if choice in self.failing_set:
+            self.env_failures[choice] += 1
             if self.group == "A" or self.group == "B":
                 pass
             elif self.group == "C":
