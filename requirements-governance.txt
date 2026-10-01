@@ -1,0 +1,5 @@
+# Optional governance-bench dependencies.
+# Not installed by default CI. v1.3 constitution: no heavy frameworks in the core path.
+rdflib>=7.0.0
+pyshacl>=0.26.0
+z3-solver>=4.12.0

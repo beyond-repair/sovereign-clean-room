@@ -56,6 +56,18 @@ Offline cognitive substrate. Cryptographic skill gates. Fail-closed integrity.
 
 ---
 
+## ▌ BENCH / GOVERNANCE UPDATE (2026-09-30)
+
+Phase I (FHRR) and Phase III (BaNEL) protocol, plus the MemSkill SHACL/Z3/Ed25519 promotion contract:
+
+- `docs/benchmarks/PHASE_I_III_BENCHMARK_PROTOCOL.md`
+- `docs/benchmarks/MEMSKILL_GOVERNANCE_PIPELINE.md`
+- `shapes/mem_skill_shape.ttl`
+- `core/clean_room_z3.py`
+- `core/memskill_governance_gate.py`
+
+`core/clean_room_shacl.py` is unchanged. Z3 and pyshacl are optional (`requirements-governance.txt`).
+
 ## ▌ QUICK START
 
 ```bash

@@ -1,0 +1,78 @@
+{
+  "id": "MemSkillShape",
+  "note": "Offline subset mirror of shapes/mem_skill_shape.ttl for core/clean_room_shacl.py. minInclusive/maxInclusive and sh:node are not enforced by ShapeEngine; Z3 and the Turtle gate cover those.",
+  "shapes": [
+    {
+      "id": "MemSkillShape",
+      "targetClass": "seem:MemSkill",
+      "closed": true,
+      "ignoredProperties": ["seem:comment"],
+      "properties": [
+        {
+          "path": "seem:skillId",
+          "datatype": "string",
+          "minCount": 1,
+          "maxCount": 1,
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        },
+        {
+          "path": "seem:invertibilityScore",
+          "datatype": "float",
+          "minCount": 1,
+          "maxCount": 1
+        },
+        {
+          "path": "seem:maxExecutionMs",
+          "datatype": "integer",
+          "minCount": 1,
+          "maxCount": 1
+        },
+        {
+          "path": "seem:networkAccessPermitted",
+          "datatype": "boolean",
+          "minCount": 1,
+          "maxCount": 1,
+          "hasValue": false
+        },
+        {
+          "path": "seem:hasTransitionStep",
+          "minCount": 1,
+          "maxCount": 16
+        },
+        {
+          "path": "seem:verificationHash",
+          "datatype": "string",
+          "minCount": 1,
+          "maxCount": 1,
+          "pattern": "^[a-fA-F0-9]{64}$"
+        }
+      ]
+    },
+    {
+      "id": "TransitionStepShape",
+      "targetClass": "seem:TransitionStep",
+      "closed": true,
+      "properties": [
+        {
+          "path": "seem:stepIndex",
+          "datatype": "integer",
+          "minCount": 1,
+          "maxCount": 1
+        },
+        {
+          "path": "seem:operatorSymbol",
+          "datatype": "string",
+          "minCount": 1,
+          "maxCount": 1,
+          "pattern": "^[A-Z0-9_]+$"
+        },
+        {
+          "path": "seem:resourceCost",
+          "datatype": "integer",
+          "minCount": 1,
+          "maxCount": 1
+        }
+      ]
+    }
+  ]
+}

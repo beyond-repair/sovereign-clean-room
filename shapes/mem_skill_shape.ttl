@@ -1,0 +1,99 @@
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix seem: <http://adl-seem.org/core/ontology#> .
+
+# MemSkill root shape.
+# Canonical structural gate for L3 promotion.
+# Offline mirror: shapes/mem_skill_shape.json (clean_room_shacl.ShapeEngine subset).
+
+seem:MemSkillShape
+    a sh:NodeShape ;
+    sh:targetClass seem:MemSkill ;
+    sh:closed true ;
+    sh:ignoredProperties ( seem:comment ) ;
+
+    sh:property [
+        sh:path seem:skillId ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:pattern "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$" ;
+        sh:message "MemSkill must have a valid UUIDv4 skillId." ;
+    ] ;
+
+    sh:property [
+        sh:path seem:invertibilityScore ;
+        sh:datatype xsd:float ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minInclusive 0.92 ;
+        sh:maxInclusive 1.0 ;
+        sh:message "Resonator invertibility score must be >= 0.92." ;
+    ] ;
+
+    sh:property [
+        sh:path seem:maxExecutionMs ;
+        sh:datatype xsd:integer ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minInclusive 1 ;
+        sh:maxInclusive 5000 ;
+        sh:message "Max execution time must be bounded between 1ms and 5000ms." ;
+    ] ;
+
+    sh:property [
+        sh:path seem:networkAccessPermitted ;
+        sh:datatype xsd:boolean ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:hasValue false ;
+        sh:message "Local-first violation: networkAccessPermitted must be false." ;
+    ] ;
+
+    sh:property [
+        sh:path seem:hasTransitionStep ;
+        sh:node seem:TransitionStepShape ;
+        sh:minCount 1 ;
+        sh:maxCount 16 ;
+        sh:message "A MemSkill must contain between 1 and 16 transition steps." ;
+    ] ;
+
+    sh:property [
+        sh:path seem:verificationHash ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:pattern "^[a-fA-F0-9]{64}$" ;
+        sh:message "MemSkill must include a valid SHA-256 verification artifact hash." ;
+    ] .
+
+seem:TransitionStepShape
+    a sh:NodeShape ;
+    sh:targetClass seem:TransitionStep ;
+    sh:closed true ;
+
+    sh:property [
+        sh:path seem:stepIndex ;
+        sh:datatype xsd:integer ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minInclusive 0 ;
+    ] ;
+
+    sh:property [
+        sh:path seem:operatorSymbol ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:pattern "^[A-Z0-9_]+$" ;
+        sh:message "Operator symbols must be uppercase alphanumeric identifier strings." ;
+    ] ;
+
+    sh:property [
+        sh:path seem:resourceCost ;
+        sh:datatype xsd:integer ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minInclusive 0 ;
+        sh:maxInclusive 100 ;
+    ] .
