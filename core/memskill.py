@@ -121,9 +121,14 @@ def promote_memskill(
     )
     package = pkg_obj.to_package()
 
+    # Episode promotion is not the SHACL/Z3 governance gate. A placeholder
+    # signature is never a successful validation.
+    package["governance_passed"] = False
     if signing_key_hex and sign_package is not None:
+        package["signed"] = True
         package = sign_package(package, signing_key_hex)
     else:
+        package["signed"] = False
         package["manifest"]["signature"] = "UNSIGNED_DEV_PLACEHOLDER"
 
     if registry is not None:

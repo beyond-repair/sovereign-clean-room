@@ -8,6 +8,8 @@ Obligations:
 - Precondition / postcondition validity for isolate → verify → execute.
 - Resource bound: total declared cost <= C_max.
 - Compromised state is forbidden on a valid path.
+- Declared preconditions must be discharged by a transition operator.
+  dischargedBy=EXTERNAL is unsatisfiable in this encoding.
 
 Encoding note: global ¬compromised plus (¬precondition ⇒ compromised) forces the
 precondition. unsat means the encoding is rejected. SAT means a trajectory
@@ -36,9 +38,10 @@ class MemSkillZ3Verifier:
             return False, "Z3_REJECT_UNAVAILABLE: z3-solver is not installed."
 
         solver = Solver()
-        steps: List[Dict[str, Any]] = skill_data.get("transitions", [])
+        steps: List[Dict[str, Any]] = list(skill_data.get("transitions", []))
         if not steps:
             return False, "Z3_ERROR: Empty transition pipeline."
+        steps.sort(key=lambda s: (int(s.get("stepIndex", 0)), str(s.get("operatorSymbol", ""))))
 
         num_steps = len(steps)
 
@@ -85,6 +88,18 @@ class MemSkillZ3Verifier:
                 solver.add(state_verified[i + 1] == state_verified[i])
 
         solver.add(state_verified[num_steps] == True)  # noqa: E712
+
+        # Preconditions are discharge obligations. EXTERNAL is not a step
+        # operator: the encoding cannot see an outside attestation, so it
+        # rejects. That rejection is conservative when a runtime trace
+        # actually observed the attestation.
+        operators = [str(step.get("operatorSymbol", "")) for step in steps]
+        for prec in skill_data.get("preconditions") or []:
+            discharged = str(prec.get("dischargedBy", ""))
+            if discharged == "EXTERNAL" or discharged not in operators:
+                missing = Bool(f"precondition_undischarged_{prec.get('id', 'unknown')}")
+                solver.add(missing)
+                solver.add(Not(missing))
 
         result = solver.check()
         if result == sat:

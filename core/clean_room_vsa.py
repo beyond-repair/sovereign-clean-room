@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Clean-Room VSA Core v1.3.3 — Path A static FHRR engine (operator-authorized)."""
+"""Clean-Room VSA Core v1.3.3 — Path A static FHRR engine (operator-authorized).
+
+Runtime algebra is the constitution hypersphere (vector L2 after bind/unbind).
+Locked Phase I measurement uses core.fhrr_protocol and phasor projection.
+Do not treat similarity() as the protocol cosine-sum invertibility.
+"""
 from __future__ import annotations
 import hashlib, json, math, time
 from dataclasses import dataclass, field
@@ -31,6 +36,21 @@ def _seeded_rng(seed: Optional[int] = None) -> np.random.Generator:
 @dataclass
 class BaNEL:
     failure_ledger: List[Dict[str, Any]] = field(default_factory=list)
+    def parallel_repulsion(self, query: np.ndarray, failure: np.ndarray) -> np.ndarray:
+        """Remove the parallel component of a failure vector and renormalize.
+
+        Constitution v1.3 names hyperspherical parallel projection. This does
+        not change record_failure. A zero failure vector is returned as the
+        normalized query; it is not given a synthetic phase.
+        """
+        q = np.asarray(query, dtype=np.complex128)
+        f = np.asarray(failure, dtype=np.complex128)
+        denom = float(np.vdot(f, f).real)
+        if denom < 1e-12:
+            return _normalize_fhrr(q)
+        proj = (np.vdot(f, q) / denom) * f
+        return _normalize_fhrr(q - proj)
+
     def record_failure(self, label: str, messages: Optional[Union[str, List[str]]] = None, context_vector: Optional[np.ndarray] = None) -> float:
         msg_list = [] if messages is None else ([messages] if isinstance(messages, str) else list(messages))
         self.failure_ledger.append({"label": label, "messages": msg_list, "ts": time.time(),

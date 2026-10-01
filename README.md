@@ -69,6 +69,10 @@ Phase I (FHRR) and Phase III (BaNEL) protocol, plus the MemSkill SHACL/Z3/Ed2551
 
 `core/clean_room_shacl.py` is unchanged. Z3 and pyshacl are optional (`requirements-governance.txt`).
 
+The stability and alert bars above are decorative. They are not measurements.
+
+Completion-pass notes, claim classes, and deviations: `docs/AUDIT_SEEM_COMPLETION.md`. A benchmark cell is a measured result only when `results/execution_record.json` says so. Empty or `not_run` cells are not results.
+
 ## ▌ QUICK START
 
 ```bash
