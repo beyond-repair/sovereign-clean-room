@@ -10,8 +10,9 @@ Obligations:
 - Compromised state is forbidden on a valid path.
 
 Encoding note: global ¬compromised plus (¬precondition ⇒ compromised) forces the
-precondition. unsat means the sequence is rejected. It does not, by itself, name
-the violated step.
+precondition. unsat means the encoding is rejected. SAT means a trajectory
+exists in this symbolic model. Neither result is a proof about runtime
+execution. Formal/runtime correspondence is a separate measurement.
 """
 
 from __future__ import annotations

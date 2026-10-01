@@ -106,3 +106,10 @@ Namespace: `http://adl-seem.org/core/ontology#`.
 - No Monte Carlo log for H1.1, H1.2, H3.1, or H3.2 is in this update.
 - Z3 and pyshacl are not in the default CI image. `tests/test_memskill_z3_gate.py` skips when `z3` is absent.
 - Reconstructed metric bodies in the protocol remain A4 until the source equations are supplied.
+
+## v1.0 correction
+
+Z3 `SAT` is satisfiability of the symbolic encoding, not a runtime safety proof. Correspondence is recorded as the SAFE/UNSAFE matrix in the v1.0 protocol.
+
+SHACL and Z3 now consume `core/memskill_ir.py` output. Disagreeing `transitions` and `hasTransitionStep` lists fail at `GATE_0_IR_FAIL` before either engine runs. The Ed25519 payload is `{"manifest": {"signature": ""}, "ir": <canonical IR>}`.
+

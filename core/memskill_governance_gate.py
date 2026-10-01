@@ -20,6 +20,7 @@ import os
 from typing import Any, Dict, Tuple
 
 from clean_room_z3 import MemSkillZ3Verifier
+from memskill_ir import CanonicalizationError, canonicalize
 
 
 def _load_signer():
@@ -135,7 +136,18 @@ class MemSkillGovernanceGate:
     def evaluate_and_sign(
         self, candidate_data: Dict[str, Any]
     ) -> Tuple[bool, Dict[str, Any], str]:
-        """SHACL, then Z3, then Ed25519. Any failure returns passed=False."""
+        """Canonical IR, then SHACL, then Z3 encoding check, then Ed25519.
+
+        Z3 SAT is satisfiability of the symbolic encoding, not a runtime safety proof.
+        Any failure returns passed=False.
+        """
+        try:
+            ir = canonicalize(candidate_data)
+        except CanonicalizationError as exc:
+            return False, {}, f"GATE_0_IR_FAIL: {exc}"
+        except Exception as exc:
+            return False, {}, f"GATE_0_IR_FAIL: {exc}"
+
         if self.shape_graph is None:
             return False, {}, f"GATE_1_SHACL_ERROR: {self._shape_error}"
 
@@ -145,7 +157,7 @@ class MemSkillGovernanceGate:
             return False, {}, "GATE_1_SHACL_ERROR: pyshacl is not installed."
 
         try:
-            data_graph = self._json_to_rdf(candidate_data)
+            data_graph = self._json_to_rdf(ir)
             conforms, _results_graph, results_text = validate(
                 data_graph,
                 shacl_graph=self.shape_graph,
@@ -157,7 +169,7 @@ class MemSkillGovernanceGate:
         except Exception as exc:
             return False, {}, f"GATE_1_SHACL_ERROR: RDF conversion or parsing failed: {exc}"
 
-        z3_passed, z3_msg = self.z3_verifier.verify_memskill(candidate_data)
+        z3_passed, z3_msg = self.z3_verifier.verify_memskill(ir)
         if not z3_passed:
             return False, {}, f"GATE_2_Z3_FAIL: {z3_msg}"
 
@@ -169,15 +181,13 @@ class MemSkillGovernanceGate:
                 {},
                 "GATE_3_CRYPTO_UNAVAILABLE: Ed25519 signer or SEEM_SKILL_SIGNING_KEY_HEX missing. Mock signature rejected.",
             )
-        manifest = candidate_data.get("manifest")
-        if not isinstance(manifest, dict):
-            return (
-                False,
-                {},
-                "GATE_3_CRYPTO_UNAVAILABLE: candidate.manifest required for skill_crypto.sign_package.",
-            )
         try:
-            signed_package = sign_package(candidate_data, signing_key)
+            package = {"manifest": {"signature": ""}, "ir": ir}
+            signed_package = sign_package(package, signing_key)
         except Exception as exc:
             return False, {}, f"GATE_3_CRYPTO_FAIL: {exc}"
-        return True, signed_package, f"GOVERNANCE_PASS: SHACL and Z3 gates satisfied. {z3_msg}"
+        return (
+            True,
+            signed_package,
+            f"GOVERNANCE_PASS: IR, SHACL, and Z3 encoding checks satisfied. {z3_msg} Z3 SAT is not a runtime safety proof.",
+        )

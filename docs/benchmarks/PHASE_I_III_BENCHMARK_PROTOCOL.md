@@ -1,3 +1,5 @@
+> **SUPERSEDED RESEARCH DRAFT.** Locked protocol is `PHASE_I_III_VALIDATION_PROTOCOL_v1.0.md`. Do not treat numbers in this draft as measured results or as implementation guarantees. Equation reconstructions here are replaced by the locked cosine-sum definition in v1.0.
+
 # Phase I / Phase III Benchmark Protocol
 
 **Status:** Experimental protocol update (2026-09-30)
