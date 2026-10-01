@@ -370,6 +370,10 @@ def run_cell(
     }
     if variant is not None:
         config["resonator_variant"] = str(variant)
+        if variant == "codebook_superposition":
+            config["resonator_init"] = (
+                "codebook_superposition_sequential_soft_cleanup_full_tmax"
+            )
     digest = config_sha256(config)
     if n_trials <= 0:
         return _envelope(

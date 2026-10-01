@@ -1,0 +1,397 @@
+{
+  "label": "variant_not_locked_grid",
+  "protocol_clause": "docs/benchmarks/PHASE_I_III_VALIDATION_PROTOCOL_v1.0.md section 1 locks M=1000 and T_max=7. It does not lock the resonator initial distribution. This file is not a locked-grid cell and does not meet the 0.92 / 0.95 CI floors.",
+  "git_sha_head": "7dc0d93a7925a97c1c637d2f02108f71dee12ee3",
+  "code_note": "resonator_init label in configuration was set after commit 7dc0d93a7925a97c1c637d2f02108f71dee12ee3. Algorithm matches resonator_codebook_superposition in that commit; only the recorded init string changed.",
+  "dirty_stat": "core/fhrr_protocol.py | 4 ++++\n 1 file changed, 4 insertions(+)",
+  "network_access": false,
+  "floors": {
+    "mean_I_ci_low": 0.92,
+    "accuracy_ci_low": 0.95
+  },
+  "floors_met": false,
+  "cells": [
+    {
+      "protocol": "SEEM-VALIDATION-v1.0",
+      "status": "partial",
+      "claim_class": "measured_result",
+      "git_sha": "7dc0d93a7925a97c1c637d2f02108f71dee12ee3",
+      "seed_record": {
+        "codebook_seed": 20260930,
+        "trial_seed": 20261001,
+        "config_sha256": "5c4d8be596d189ca6053bf6ac3c8decafe337512ce6614d56c79f43f314b4960",
+        "bootstrap_seed": 20260930
+      },
+      "phase": "I",
+      "d": 8192,
+      "k": 3,
+      "gamma": 0.0,
+      "n_trials": 16,
+      "trials_completed": 16,
+      "usable_trials": 16,
+      "mean_I": 0.028044020649339984,
+      "mean_I_ci95": [
+        0.02014492488057777,
+        0.0358279525882108
+      ],
+      "mean_I_ci_low": 0.02014492488057777,
+      "retrieval_accuracy": 0.0,
+      "retrieval_accuracy_ci95": [
+        0.0,
+        0.2059072142078227
+      ],
+      "accuracy_ci_low": 0.0,
+      "median_T": 7.0,
+      "projection_faults": 0,
+      "k_max": null,
+      "R_d": null,
+      "notes": "Variant resonator_variant=codebook_superposition. Not a locked-grid cell. Protocol v1.0 section 1 locks M=1000 and T_max=7 and does not lock the initial distribution. Floors are not claimed by this status.",
+      "configuration": {
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "d": 8192,
+        "k": 3,
+        "gamma": 0.0,
+        "n_trials": 16,
+        "m": 1000,
+        "n_noise": 1,
+        "t_max": 7,
+        "codebook_seed": 20260930,
+        "trial_seed": 20261001,
+        "bootstrap_seed": 20260930,
+        "bootstrap_resamples": 10000,
+        "binding": "component_wise_complex_multiply",
+        "projection": "phasor_project",
+        "invertibility": "cosine_sum",
+        "phase_interval": "(-pi, pi]",
+        "resonator_init": "codebook_superposition_sequential_soft_cleanup_full_tmax",
+        "resonator_variant": "codebook_superposition"
+      },
+      "trials": [
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.047282214993623076,
+          "retrieval_hit": false,
+          "chosen_index": 628,
+          "target_index": 280,
+          "aligned_slot": 2,
+          "iterations": 7,
+          "converged": false
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.016909173835449015,
+          "retrieval_hit": false,
+          "chosen_index": 628,
+          "target_index": 256,
+          "aligned_slot": 2,
+          "iterations": 7,
+          "converged": true
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.02924746088133615,
+          "retrieval_hit": false,
+          "chosen_index": 773,
+          "target_index": 451,
+          "aligned_slot": 1,
+          "iterations": 7,
+          "converged": false
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.059159814951096,
+          "retrieval_hit": false,
+          "chosen_index": 991,
+          "target_index": 846,
+          "aligned_slot": 1,
+          "iterations": 7,
+          "converged": false
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.041484543404230224,
+          "retrieval_hit": false,
+          "chosen_index": 757,
+          "target_index": 691,
+          "aligned_slot": 1,
+          "iterations": 7,
+          "converged": false
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.030864987598293907,
+          "retrieval_hit": false,
+          "chosen_index": 944,
+          "target_index": 134,
+          "aligned_slot": 2,
+          "iterations": 7,
+          "converged": true
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.034830854863780805,
+          "retrieval_hit": false,
+          "chosen_index": 457,
+          "target_index": 237,
+          "aligned_slot": 2,
+          "iterations": 7,
+          "converged": true
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.02742459956014201,
+          "retrieval_hit": false,
+          "chosen_index": 595,
+          "target_index": 285,
+          "aligned_slot": 2,
+          "iterations": 7,
+          "converged": false
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.0005872925764424087,
+          "retrieval_hit": false,
+          "chosen_index": 396,
+          "target_index": 559,
+          "aligned_slot": 1,
+          "iterations": 7,
+          "converged": false
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.02737699000655916,
+          "retrieval_hit": false,
+          "chosen_index": 92,
+          "target_index": 671,
+          "aligned_slot": 0,
+          "iterations": 7,
+          "converged": false
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.04144954922958774,
+          "retrieval_hit": false,
+          "chosen_index": 150,
+          "target_index": 436,
+          "aligned_slot": 2,
+          "iterations": 7,
+          "converged": false
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.012759528599399855,
+          "retrieval_hit": false,
+          "chosen_index": 316,
+          "target_index": 391,
+          "aligned_slot": 0,
+          "iterations": 7,
+          "converged": true
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.044000436782427654,
+          "retrieval_hit": false,
+          "chosen_index": 545,
+          "target_index": 953,
+          "aligned_slot": 0,
+          "iterations": 7,
+          "converged": false
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.023339594820784616,
+          "retrieval_hit": false,
+          "chosen_index": 500,
+          "target_index": 61,
+          "aligned_slot": 1,
+          "iterations": 7,
+          "converged": false
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": -0.0018280092711376724,
+          "retrieval_hit": false,
+          "chosen_index": 142,
+          "target_index": 51,
+          "aligned_slot": 1,
+          "iterations": 7,
+          "converged": true
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.013815297557424833,
+          "retrieval_hit": false,
+          "chosen_index": 586,
+          "target_index": 141,
+          "aligned_slot": 2,
+          "iterations": 7,
+          "converged": false
+        }
+      ],
+      "wall_clock_s": 29.64738453499922
+    },
+    {
+      "protocol": "SEEM-VALIDATION-v1.0",
+      "status": "partial",
+      "claim_class": "measured_result",
+      "git_sha": "7dc0d93a7925a97c1c637d2f02108f71dee12ee3",
+      "seed_record": {
+        "codebook_seed": 20260930,
+        "trial_seed": 20261001,
+        "config_sha256": "c3b88003d20779cb9938ae8a75ef26199db2dc2897f097b376ed2cbda69c418f",
+        "bootstrap_seed": 20260930
+      },
+      "phase": "I",
+      "d": 8192,
+      "k": 2,
+      "gamma": 0.0,
+      "n_trials": 8,
+      "trials_completed": 8,
+      "usable_trials": 8,
+      "mean_I": 0.8363403049647729,
+      "mean_I_ci95": [
+        0.7481568288450525,
+        0.9130706979128821
+      ],
+      "mean_I_ci_low": 0.7481568288450525,
+      "retrieval_accuracy": 1.0,
+      "retrieval_accuracy_ci95": [
+        0.6305833524471807,
+        1.0
+      ],
+      "accuracy_ci_low": 0.6305833524471807,
+      "median_T": 7.0,
+      "projection_faults": 0,
+      "k_max": null,
+      "R_d": null,
+      "notes": "Variant resonator_variant=codebook_superposition. Not a locked-grid cell. Protocol v1.0 section 1 locks M=1000 and T_max=7 and does not lock the initial distribution. Floors are not claimed by this status.",
+      "configuration": {
+        "protocol": "SEEM-VALIDATION-v1.0",
+        "d": 8192,
+        "k": 2,
+        "gamma": 0.0,
+        "n_trials": 8,
+        "m": 1000,
+        "n_noise": 1,
+        "t_max": 7,
+        "codebook_seed": 20260930,
+        "trial_seed": 20261001,
+        "bootstrap_seed": 20260930,
+        "bootstrap_resamples": 10000,
+        "binding": "component_wise_complex_multiply",
+        "projection": "phasor_project",
+        "invertibility": "cosine_sum",
+        "phase_interval": "(-pi, pi]",
+        "resonator_init": "codebook_superposition_sequential_soft_cleanup_full_tmax",
+        "resonator_variant": "codebook_superposition"
+      },
+      "trials": [
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.884697828641408,
+          "retrieval_hit": true,
+          "chosen_index": 280,
+          "target_index": 280,
+          "aligned_slot": 0,
+          "iterations": 7,
+          "converged": true
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.8956749361497645,
+          "retrieval_hit": true,
+          "chosen_index": 256,
+          "target_index": 256,
+          "aligned_slot": 1,
+          "iterations": 7,
+          "converged": true
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.9675725003132134,
+          "retrieval_hit": true,
+          "chosen_index": 983,
+          "target_index": 983,
+          "aligned_slot": 1,
+          "iterations": 7,
+          "converged": true
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.6465433441317978,
+          "retrieval_hit": true,
+          "chosen_index": 337,
+          "target_index": 337,
+          "aligned_slot": 0,
+          "iterations": 7,
+          "converged": true
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.8107876505001532,
+          "retrieval_hit": true,
+          "chosen_index": 361,
+          "target_index": 361,
+          "aligned_slot": 1,
+          "iterations": 7,
+          "converged": true
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.649254705799599,
+          "retrieval_hit": true,
+          "chosen_index": 28,
+          "target_index": 28,
+          "aligned_slot": 0,
+          "iterations": 7,
+          "converged": true
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.9559628586257819,
+          "retrieval_hit": true,
+          "chosen_index": 237,
+          "target_index": 237,
+          "aligned_slot": 1,
+          "iterations": 7,
+          "converged": true
+        },
+        {
+          "projection_faults": 0,
+          "excluded": false,
+          "I": 0.8802286155564656,
+          "retrieval_hit": true,
+          "chosen_index": 626,
+          "target_index": 626,
+          "aligned_slot": 1,
+          "iterations": 7,
+          "converged": true
+        }
+      ],
+      "wall_clock_s": 10.703095552999002
+    }
+  ]
+}
