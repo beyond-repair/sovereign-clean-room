@@ -497,49 +497,61 @@ def cmd_physics(args: argparse.Namespace) -> int:
     return 2
 
 
+def _workspace_parser(default: Any) -> argparse.ArgumentParser:
+    """Workspace flag shared by the top-level parser and every subparser.
+
+    The child copies use ``argparse.SUPPRESS`` so a ``-w`` before the
+    subcommand is not overwritten by the child default. A ``-w`` after the
+    subcommand (the order in the README) is accepted on that subparser.
+    """
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--workspace", "-w", default=default, help="workspace root")
+    return parser
+
+
 def build_parser() -> argparse.ArgumentParser:
+    top_ws = _workspace_parser("./sovereign_workspace")
+    sub_ws = _workspace_parser(argparse.SUPPRESS)
     p = argparse.ArgumentParser(
         prog="clean_room_cli",
         description="Sovereign Clean-Room Control CLI (offline-only)",
-    )
-    p.add_argument(
-        "--workspace", "-w", default="./sovereign_workspace", help="workspace root"
+        parents=[top_ws],
     )
     sub = p.add_subparsers(dest="command", required=True)
 
-    s = sub.add_parser("init", help="initialize workspace + jump-start")
+    s = sub.add_parser("init", parents=[sub_ws], help="initialize workspace + jump-start")
     s.set_defaults(func=cmd_init)
 
-    s = sub.add_parser("status", help="inspect engine, ledger, checkpoints, trust")
+    s = sub.add_parser("status", help="inspect engine, ledger, checkpoints, trust", parents=[sub_ws])
     s.add_argument("--strict", action="store_true", help="exit 2 on integrity failures")
     s.set_defaults(func=cmd_status)
 
-    s = sub.add_parser("sign", help="Ed25519-sign a skill package")
+    s = sub.add_parser("sign", help="Ed25519-sign a skill package", parents=[sub_ws])
     s.add_argument("--package", "-p", required=True)
     s.add_argument("--signing-key", default=None)
     s.add_argument("--output", "-o", default=None)
     s.add_argument("--generate-keys", action="store_true")
     s.set_defaults(func=cmd_sign)
 
-    s = sub.add_parser("ledger", help="ledger operations")
+    s = sub.add_parser("ledger", help="ledger operations", parents=[sub_ws])
     led = s.add_subparsers(dest="ledger_cmd", required=True)
-    v = led.add_parser("verify", help="verify hash chain")
+    v = led.add_parser("verify", help="verify hash chain", parents=[sub_ws])
     v.set_defaults(func=cmd_ledger_verify)
 
-    s = sub.add_parser("memory", help="episodic memory")
+    s = sub.add_parser("memory", help="episodic memory", parents=[sub_ws])
     s.add_argument("query", help="query text or content to store")
     s.add_argument("--remember", action="store_true", help="store instead of recall")
     s.add_argument("--top-k", type=int, default=5)
     s.add_argument("--tau", type=float, default=0.92)
     s.set_defaults(func=cmd_memory_recall)
 
-    s = sub.add_parser("shacl", help="SHACL check")
+    s = sub.add_parser("shacl", help="SHACL check", parents=[sub_ws])
     s.add_argument("--data", "-d", required=True, help="JSON package or node map")
     s.add_argument("--shapes", default=None)
     s.add_argument("--shape-id", default=None)
     s.set_defaults(func=cmd_shacl_check)
 
-    s = sub.add_parser("run", help="run one signed skill package")
+    s = sub.add_parser("run", help="run one signed skill package", parents=[sub_ws])
     s.add_argument("--package", "-p", required=True)
     s.add_argument("--handler", choices=("noop", "model"), default="noop")
     s.add_argument("--note", default="")
@@ -549,9 +561,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--no-shacl", action="store_true")
     s.set_defaults(func=cmd_run)
 
-    s = sub.add_parser("daemon", help="daemon operations")
+    s = sub.add_parser("daemon", help="daemon operations", parents=[sub_ws])
     dsub = s.add_subparsers(dest="daemon_cmd", required=True)
-    st = dsub.add_parser("start", help="run offline task cycle")
+    st = dsub.add_parser("start", help="run offline task cycle", parents=[sub_ws])
     st.add_argument("--package", "-p", action="append", default=[])
     st.add_argument("--task-id", default="cli-daemon")
     st.add_argument("--description", default="")
@@ -561,29 +573,29 @@ def build_parser() -> argparse.ArgumentParser:
     st.add_argument("--no-resume", action="store_true")
     st.set_defaults(func=cmd_daemon_start)
 
-    s = sub.add_parser("dashboard", help="local loopback web dashboard")
+    s = sub.add_parser("dashboard", help="local loopback web dashboard", parents=[sub_ws])
     dash_sub = s.add_subparsers(dest="dashboard_cmd", required=True)
-    ds = dash_sub.add_parser("start", help="serve UI on 127.0.0.1 only")
+    ds = dash_sub.add_parser("start", help="serve UI on 127.0.0.1 only", parents=[sub_ws])
     ds.add_argument("--host", default="127.0.0.1", help="must be 127.0.0.1 or localhost")
     ds.add_argument("--port", type=int, default=8765)
     ds.set_defaults(func=cmd_dashboard_start)
 
-    s = sub.add_parser("jkillnhide", help="workspace integrity watchdog (offline)")
+    s = sub.add_parser("jkillnhide", parents=[sub_ws], help="workspace integrity watchdog (offline)")
     jk = s.add_subparsers(dest="jkill_cmd", required=True)
-    jb = jk.add_parser("baseline", help="write integrity baseline snapshot")
+    jb = jk.add_parser("baseline", help="write integrity baseline snapshot", parents=[sub_ws])
     jb.add_argument("--allow-drift", action="store_true")
     jb.set_defaults(func=cmd_jkillnhide)
-    jc = jk.add_parser("check", help="scan vs baseline (exit 2 on DRIFT)")
+    jc = jk.add_parser("check", parents=[sub_ws], help="scan vs baseline (exit 2 on DRIFT)")
     jc.add_argument("--allow-drift", action="store_true")
     jc.add_argument("--no-log", action="store_true")
     jc.set_defaults(func=cmd_jkillnhide)
-    je = jk.add_parser("enforce", help="policy decision CONTINUE/FREEZE")
+    je = jk.add_parser("enforce", help="policy decision CONTINUE/FREEZE", parents=[sub_ws])
     je.add_argument("--allow-drift", action="store_true")
     je.set_defaults(func=cmd_jkillnhide)
 
-    s = sub.add_parser("physics", help="Ware/SPARC phenomenological bridge (offline)")
+    s = sub.add_parser("physics", parents=[sub_ws], help="Ware/SPARC phenomenological bridge (offline)")
     ph = s.add_subparsers(dest="physics_cmd", required=True)
-    pe = ph.add_parser("eval", help="evaluate sample or local CSV curve")
+    pe = ph.add_parser("eval", help="evaluate sample or local CSV curve", parents=[sub_ws])
     pe.add_argument("--galaxy", default="SAMPLE_A")
     pe.add_argument("--csv", default=None, help="local SPARC-style CSV only")
     pe.add_argument("--n", type=float, default=3.0)

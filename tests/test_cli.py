@@ -67,6 +67,18 @@ def test_parser_subcommands() -> None:
     print("[OK] subcommand parsing")
 
 
+def test_workspace_flag_after_subcommand() -> None:
+    """README order: `init -w <path>`, not only `--workspace` before the verb."""
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = str(Path(tmp) / "ws")
+        assert main(["init", "-w", ws]) == 0
+        assert (Path(ws) / "twin_state").is_dir()
+        assert main(["status", "-w", ws]) == 0
+        assert main(["ledger", "verify", "-w", ws]) == 0
+        assert main(["memory", "trailing flag", "--remember", "-w", ws]) == 0
+        print("[OK] workspace flag after subcommand")
+
+
 def test_init_and_status() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         ws = str(Path(tmp) / "ws")
