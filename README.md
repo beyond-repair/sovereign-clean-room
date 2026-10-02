@@ -75,12 +75,29 @@ Completion-pass notes, claim classes, and deviations: `docs/AUDIT_SEEM_COMPLETIO
 
 ## ▌ QUICK START
 
+Python **3.11, 3.12, or 3.13**. Commands assume the repository root. There is no separate build step: this is a library-plus-CLI, not a packaged wheel. `numpy==1.26.4` is installed on 3.11 and 3.12 (the CI interpreter is 3.11). On 3.13, `requirements.txt` selects a NumPy 2.x wheel because 1.26.4 has no cp313 build. PyNaCl stays pinned at 1.6.2.
+
 ```bash
 git clone https://github.com/beyond-repair/sovereign-clean-room.git
-cd sovereign-clean-room && pip install -r requirements.txt
-python core/clean_room_cli.py init -w ./sovereign_workspace
-python -m pytest tests/ -q
+cd sovereign-clean-room
+python3 -m pip install -r requirements.txt
+python3 core/clean_room_cli.py init -w ./sovereign_workspace
+python3 core/clean_room_cli.py status -w ./sovereign_workspace
+python3 core/clean_room_cli.py memory "cedar quartz" --remember -w ./sovereign_workspace
+python3 core/clean_room_cli.py memory "cedar quartz" -w ./sovereign_workspace
+python3 core/clean_room_cli.py ledger verify -w ./sovereign_workspace
+python3 -m pytest tests/ -q
 ```
+
+`init` writes a local workspace and the Jump-Start v0.1 atoms (`SELF`, `ENVIRONMENT`, `EPISODIC`, `SEMANTIC`, `SUCCESS`, `FAILURE`) under `sovereign_workspace/twin_state`. `status` and `ledger verify` should exit 0. Memory recall prints nearest episodes; it does not claim understanding. Unsigned skill packages are rejected. Signing keys stay local (`keys/README.md`); do not commit `*.sk`.
+
+Optional governance benches (SHACL Turtle gate and Z3) are not required for the commands above:
+
+```bash
+python3 -m pip install -r requirements-governance.txt
+```
+
+Without them, five tests skip (`z3` or `pyshacl` missing). With them, the same suite runs those tests. This substrate is not a mind, and the decorative stability bar is not a measurement. Partial benchmark cells live only in `results/execution_record.json` when that file says they were run.
 
 ---
 
