@@ -73,6 +73,10 @@ The stability and alert bars above are decorative. They are not measurements.
 
 Completion-pass notes, claim classes, and deviations: `docs/AUDIT_SEEM_COMPLETION.md`. A benchmark cell is a measured result only when `results/execution_record.json` says so. Empty or `not_run` cells are not results.
 
+## ▌ PORTFOLIO GOVERNANCE
+
+Classification **ACTIVE**. Parent constitution: [ADL-Governance](https://github.com/beyond-repair/ADL-Governance). Claim tag, and the unchanged `network_access=false` and 0.92 floor, are in [docs/GOVERNANCE.md](docs/GOVERNANCE.md). `manifests/CONSTITUTION_v1.3.md` is not amended here. Cognitive and physics claims are not Level 4–5.
+
 ## ▌ QUICK START
 
 ```bash
