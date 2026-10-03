@@ -73,6 +73,10 @@ The stability and alert bars above are decorative. They are not measurements.
 
 Completion-pass notes, claim classes, and deviations: `docs/AUDIT_SEEM_COMPLETION.md`. A benchmark cell is a measured result only when `results/execution_record.json` says so. Empty or `not_run` cells are not results.
 
+## ▌ PORTFOLIO GOVERNANCE
+
+Classification **ACTIVE**. Parent constitution: [ADL-Governance](https://github.com/beyond-repair/ADL-Governance). Claim tag, and the unchanged `network_access=false` and 0.92 floor, are in [docs/GOVERNANCE.md](docs/GOVERNANCE.md). `manifests/CONSTITUTION_v1.3.md` is not amended here. Cognitive and physics claims are not Level 4–5.
+
 ## ▌ QUICK START
 
 Python **3.11, 3.12, or 3.13**. Commands assume the repository root. There is no separate build step: this is a library-plus-CLI, not a packaged wheel. `numpy==1.26.4` is installed on 3.11 and 3.12 (the CI interpreter is 3.11). On 3.13, `requirements.txt` selects a NumPy 2.x wheel because 1.26.4 has no cp313 build. PyNaCl stays pinned at 1.6.2.
