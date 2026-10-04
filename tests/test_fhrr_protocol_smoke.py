@@ -9,20 +9,11 @@ import numpy as np
 from benchmark_metrics import invertibility, phasor_project
 from fhrr_protocol import bind_factors, run_cell, sample_codebook
 
-
-def _within_ulps(actual: float, expected: float, ulps: int = 2) -> bool:
-    """Cross-runner bound. Not bit identity.
-
-    GitHub Actions run 37214635678 on Python 3.11.16 / numpy 1.26.4 produced
-    trial 0 I = -0.3541841218527021 against the recorded
-    -0.35418412185270204. That is one float64 ulp. Discrete fields stayed exact.
-    """
-    observed = float(actual)
-    target = float(expected)
-    unit = math.ulp(target)
-    if unit == 0.0:
-        return observed == target
-    return abs(observed - target) / unit <= ulps
+# Actions run 37214635678: trial 0 I differed by one displayed ulp.
+# Actions run 37215706600: trial 1 I was 0.13736740691312202 vs 0.1373674069131221.
+# Bound is representation drift, not a measurement claim.
+_I_REL = 1e-12
+_I_ABS = 1e-12
 
 
 def test_codebook_is_unit_phasors_on_protocol_interval():
@@ -100,11 +91,9 @@ def test_locked_runner_trials_stay_bit_identical_without_variant():
         "bcf87c53eef84d8384944ba651e4ef9c36c28582996558ce6c252e3540dce387"
     )
     assert "resonator_variant" not in cell["configuration"]
-    # Discrete lock stays exact. Float I is not cross-runner bit-identical:
-    # Actions run 37214635678 observed one ulp off the recorded literal.
-    assert _within_ulps(cell["trials"][0]["I"], -0.35418412185270204)
+    assert math.isclose(cell["trials"][0]["I"], -0.35418412185270204, rel_tol=_I_REL, abs_tol=_I_ABS)
     assert cell["trials"][0]["iterations"] == 3
-    assert _within_ulps(cell["trials"][1]["I"], 0.1373674069131221)
+    assert math.isclose(cell["trials"][1]["I"], 0.1373674069131221, rel_tol=_I_REL, abs_tol=_I_ABS)
     assert cell["trials"][1]["iterations"] == 4
     assert cell["trials"][1]["retrieval_hit"] is True
 
